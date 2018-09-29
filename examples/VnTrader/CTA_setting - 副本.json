@@ -1,0 +1,7 @@
+[
+    {
+        "name": "double ema",
+        "className": "DoubleMaStrategy",
+        "vtSymbol": "rb1805"
+    }
+]

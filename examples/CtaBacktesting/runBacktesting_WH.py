@@ -40,4 +40,7 @@ if __name__ == '__main__':
     engine.runBacktesting()
     
     # 显示回测结果
-    engine.showBacktestingResult()
+    #engine.showBacktestingResult()
+    
+    df= engine.calculateDailyResult_to_CSV()
+    

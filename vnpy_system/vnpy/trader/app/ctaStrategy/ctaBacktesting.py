@@ -1094,7 +1094,7 @@ class BacktestingEngine(object):
 
         return resultDf
     #----------------------------------------------------------------------
-    def calculateDailyResult_to_CSV(self):
+    def calculateDailyResult_to_CSV(self,filename):
         """计算按日统计的交易结果输出到csv文件，为图形显示使用"""
         self.output(u'计算按日统计结果')
         
@@ -1140,8 +1140,8 @@ class BacktestingEngine(object):
         # 计算衍生数据
         #resultDf = resultDf.set_index('date')
         
-        resultDf.to_csv(r'F:\QH\LWZS_DATA\DailyResult.csv',encoding='utf_8_sig',mode='w',index=False) 
-        self.output(u'计算结束输出到已经CSV文件中')
+        resultDf.to_csv(filename,encoding='utf_8_sig',mode='w',index=False) 
+        self.output(u'计算结束已经输出到%s文件中'%filename)
         return resultDf
     
     #----------------------------------------------------------------------    

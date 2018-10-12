@@ -40,17 +40,16 @@ def calculateDailyResult_to_CSV(date,csvfile):
     # 开始跑回测
     engine.runBacktesting()
     
-    # 显示回测结果到CSV中
+    # 显示回测结果到CSV中 用于在K线上显示交易信号
     df= engine.calculateDailyResult_to_CSV(csvfile)    
-    
-    # 显示回测结果
-    engine.showBacktestingResult()
+  
+    # 显示回测结果  用于文华的ctrl+G的快捷键功能
+    engine.showBacktestingResultLikeWH(df)
     
     
 if __name__ == '__main__' :
     #or  __name__ == 'runBacktesting_WH':
     from vnpy.trader.app.ctaStrategy.strategy.strategyDoubleMaWH import DoubleMaStrategyWh
-    
     # 创建回测引擎
     engine = BacktestingEngine()
     
@@ -78,8 +77,7 @@ if __name__ == '__main__' :
     engine.runBacktesting()
     
     # 显示回测结果
-    engine.showBacktestingResult()
+    engine.showBacktestingResultLikeWH()
     
     # 显示回测结果到CSV中
     #df= engine.calculateDailyResult_to_CSV(r'F:\uiKLine\data\dailyresult\RB9999.csv')
-    

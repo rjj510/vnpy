@@ -19,7 +19,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from vnpy.rpc import RpcClient, RpcServer, RemoteException
-
+import prettytable as pt
+import sys
+import os
 
 # 如果安装了seaborn则设置为白色风格
 try:
@@ -118,7 +120,9 @@ class BacktestingEngine(object):
     def output(self, content):
         """输出内容"""
         print(str(datetime.now()) + "\t" + content)     
-    
+
+        
+        
     #------------------------------------------------
     # 参数设置相关
     #------------------------------------------------
@@ -1021,11 +1025,11 @@ class BacktestingEngine(object):
             d      =result[2]
             d1     =result[3]              
             setting=result[4]
-            s = pd.Series(          [setting.values(),float('%.2f'%d['totalReturn']),float('%.2f'%d1['averagewininglosing']),float('%.2f'%d1['winningRate']),d['totalTradeCount'],float('%.2f'%d1['profitLossRatio']),float('%.2f'%d['maxDrawdown']),float('%.2f'%d['maxDdPercent'])],\
-                          index =         ['参数组'  , '累计收益率'                  , '平均盈亏'                             , '胜率'                        , '交易次数'          , '平均盈利/平均亏损'                , '权益最大回撤'                ,'权益最大回撤比'])
+            s = pd.Series([setting.values(),float('%.2f'%d['totalReturn']),float('%.2f'%d1['averagewininglosing']),float('%.2f'%d1['winningRate']),d['totalTradeCount'],float('%.2f'%d1['profitLossRatio']),float('%.2f'%d['maxDrawdown']),float('%.2f'%d['maxDdPercent']),float('%.2f'%min(d1['drawdownList'])),float('%.2f'%min(d1['drawdownrateList']))],\
+                          index =         ['参数组'  , '累计收益率'                  , '平均盈亏'                             , '胜率'                        , '交易次数'          , '平均盈利/平均亏损'                , '权益最大回撤'                ,'权益最大回撤比'                ,'损益最大回撤'                       ,'损益最大回撤比'])
             resultList_csv.append(s)            
 
-        Optimization_result_csv = pd.DataFrame(columns = ['参数组', '累计收益率', '平均盈亏', '胜率', '交易次数', '平均盈利/平均亏损', '权益最大回撤','权益最大回撤比'])
+        Optimization_result_csv = pd.DataFrame(columns = ['参数组', '累计收益率', '平均盈亏', '胜率', '交易次数', '平均盈利/平均亏损', '权益最大回撤','权益最大回撤比','损益最大回撤','损益最大回撤比'])
         for i in range(len(resultList_csv)):
             Optimization_result_csv = Optimization_result_csv.append(resultList_csv[i],ignore_index=True)         
         Optimization_result_csv.to_csv(r'F:\QH\LWZS_DATA\MP_HCJG.csv',encoding='utf_8_sig',mode='w',index=False)                
@@ -1061,12 +1065,13 @@ class BacktestingEngine(object):
         if not self.tradeDict:
             self.output(u'成交记录为空，无法计算回测结果')
             return {}
+        
         # 将成交添加到每日交易结果中
         for trade in self.tradeDict.values():                
             date = trade.dt.date()
             dailyResult = self.dailyResultDict[date]
             dailyResult.addTrade(trade) 
-            
+          
         # 遍历计算每日结果
         previousClose = 0
         openPosition = 0
@@ -1076,6 +1081,7 @@ class BacktestingEngine(object):
             
             dailyResult.calculatePnl(openPosition, self.size, self.rate, self.slippage )
             openPosition = dailyResult.closePosition
+
             
             
             
@@ -1091,17 +1097,18 @@ class BacktestingEngine(object):
         
         # 计算衍生数据
         resultDf = resultDf.set_index('date')
-
-        return resultDf
+                
+        return resultDf      
     #----------------------------------------------------------------------
     def calculateDailyResult_to_CSV(self,filename):
-        """计算按日统计的交易结果输出到csv文件，为图形显示使用"""
+        """计算按日统计的交易结果输出到csv文件，为K线图形信号显示使用"""
         self.output(u'计算按日统计结果')
         
         # 检查成交记录
         if not self.tradeDict:
             self.output(u'成交记录为空，无法计算回测结果')
             return {}
+        
         # 将成交添加到每日交易结果中
         for trade in self.tradeDict.values():                
             date = trade.dt.date()
@@ -1209,7 +1216,7 @@ class BacktestingEngine(object):
             'totalCommission': totalCommission,  #总手续费
             'dailyCommission': dailyCommission,  #日均手续费
             'totalSlippage': totalSlippage,      #总滑点
-            'dailySlippage': dailySlippage,      #日桦甸
+            'dailySlippage': dailySlippage,      #日滑点
             'totalTurnover': totalTurnover,      #总成交金额
             'dailyTurnover': dailyTurnover,      #日均成交金额
             'totalTradeCount': totalTradeCount,  #总的交易次数
@@ -1222,7 +1229,87 @@ class BacktestingEngine(object):
         }
         
         return df, result
-    
+    #----------------------------------------------------------------------    
+    def calculateDailyStatisticsForWH(self, df):
+        """计算按日统计的结果，为了一些文华的输出指标"""
+        df['balance'] = df['netPnl'].cumsum() + self.capital
+        df['return'] = (np.log(df['balance']) - np.log(df['balance'].shift(1))).fillna(0)
+        df['highlevel'] = df['balance'].rolling(min_periods=1,window=len(df),center=False).max()
+        df['drawdown'] = df['balance'] - df['highlevel']        
+        df['ddPercent'] = df['drawdown'] / df['highlevel'] * 100
+        
+        
+        
+        # 计算统计结果
+        startDate = df.index[0]
+        endDate = df.index[-1]
+
+        totalDays = len(df)
+        profitDays = len(df[df['netPnl']>0])
+        lossDays = len(df[df['netPnl']<0])
+        
+        endBalance = df['balance'].iloc[-1]
+        maxDrawdown = df['drawdown'].min()
+        maxDrawdowndate = df[(df.drawdown == df['drawdown'].min())].index.tolist()[0]        
+        maxDdPercent = df['ddPercent'].min()
+        maxDdPercentdate = df[(df.ddPercent == df['ddPercent'].min())].index.tolist()[0]  
+        
+     
+        totalNetPnl = df['netPnl'].sum()
+        dailyNetPnl = totalNetPnl / totalDays
+        
+        totalCommission = df['commission'].sum()
+        dailyCommission = totalCommission / totalDays
+        
+        totalSlippage = df['slippage'].sum()
+        dailySlippage = totalSlippage / totalDays
+        
+        totalTurnover = df['turnover'].sum()
+        dailyTurnover = totalTurnover / totalDays
+        
+        totalTradeCount = df['tradeCount'].sum()
+        dailyTradeCount = totalTradeCount / totalDays
+        
+        totalReturn = (endBalance/self.capital - 1) * 100
+        annualizedReturn = totalReturn / totalDays * 240
+        dailyReturn = df['return'].mean() * 100
+        returnStd = df['return'].std() * 100
+             
+        
+        if returnStd:
+            sharpeRatio = dailyReturn / returnStd * np.sqrt(240)
+        else:
+            sharpeRatio = 0
+            
+        # 返回结果
+        result = {
+            'startDate': startDate,              #首个交易日  
+            'endDate': endDate,                  #结束交易日
+            'totalDays': totalDays,              #总交易日
+            'profitDays': profitDays,            #盈利交易日
+            'lossDays': lossDays,                #亏损交易日
+            'endBalance': endBalance,            #结束资金
+            'maxDrawdown': maxDrawdown,          #权益最大回撤
+            'maxDdPercent': maxDdPercent,        #权益百分比最大回撤
+            'maxDrawdowndate': maxDrawdowndate,  #权益最大回撤日期
+            'maxDdPercentdate': maxDdPercentdate,#权益百分比最大回撤日期
+            'totalNetPnl': totalNetPnl,          #总盈亏
+            'dailyNetPnl': dailyNetPnl,          #日均盈亏
+            'totalCommission': totalCommission,  #总手续费
+            'dailyCommission': dailyCommission,  #日均手续费
+            'totalSlippage': totalSlippage,      #总滑点
+            'dailySlippage': dailySlippage,      #日滑点
+            'totalTurnover': totalTurnover,      #总成交金额
+            'dailyTurnover': dailyTurnover,      #日均成交金额
+            'totalTradeCount': totalTradeCount,  #总的交易次数
+            'dailyTradeCount': dailyTradeCount,  #日均成交笔数
+            'totalReturn': totalReturn,          #累计收益率
+            'annualizedReturn': annualizedReturn,#年化收益
+            'dailyReturn': dailyReturn,          #日均收益率
+            'returnStd': returnStd,              #收益标准差
+            'sharpeRatio': sharpeRatio,          #夏普比率 
+        }
+        return df, result
     #----------------------------------------------------------------------
     def showDailyResult(self, df=None, result=None):
         """显示按日统计的交易结果"""
@@ -1284,6 +1371,386 @@ class BacktestingEngine(object):
         
         plt.show()
        
+    #----------------------------------------------------------------------
+    def calculateBacktestingResultForWH(self):
+        """计算回测结果,为了文华那样的显示输出""" 
+        self.output(u'计算回测结果')
+        
+        # 检查成交记录
+        if not self.tradeDict:
+            self.output(u'成交记录为空，无法计算回测结果')
+            return {}
+        
+        # 首先基于回测后的成交记录，计算每笔交易的盈亏
+        resultList = []             # 交易结果列表
+        
+        longTrade = []              # 未平仓的多头交易
+        shortTrade = []             # 未平仓的空头交易
+        
+        tradeTimeList = []          # 每笔成交时间戳
+        posList = [0]               # 每笔成交后的持仓情况        
+
+        for trade in self.tradeDict.values():
+            # 复制成交对象，因为下面的开平仓交易配对涉及到对成交数量的修改
+            # 若不进行复制直接操作，则计算完后所有成交的数量会变成0
+            trade = copy.copy(trade)
+            
+            # 多头交易
+            if trade.direction == DIRECTION_LONG:
+                # 如果尚无空头交易
+                if not shortTrade:
+                    longTrade.append(trade)
+                # 当前多头交易为平空
+                else:
+                    while True:
+                        entryTrade = shortTrade[0]
+                        exitTrade = trade
+                        
+                        # 清算开平仓交易
+                        closedVolume = min(exitTrade.volume, entryTrade.volume)
+                        result = TradingResult(entryTrade.price, entryTrade.dt, 
+                                               exitTrade.price, exitTrade.dt,
+                                               -closedVolume, self.rate, self.slippage, self.size)
+                        resultList.append(result)
+                        
+                        posList.extend([-1,0])
+                        tradeTimeList.extend([result.entryDt, result.exitDt])
+                        
+                        # 计算未清算部分
+                        entryTrade.volume -= closedVolume
+                        exitTrade.volume -= closedVolume
+                        
+                        # 如果开仓交易已经全部清算，则从列表中移除
+                        if not entryTrade.volume:
+                            shortTrade.pop(0)
+                        
+                        # 如果平仓交易已经全部清算，则退出循环
+                        if not exitTrade.volume:
+                            break
+                        
+                        # 如果平仓交易未全部清算，
+                        if exitTrade.volume:
+                            # 且开仓交易已经全部清算完，则平仓交易剩余的部分
+                            # 等于新的反向开仓交易，添加到队列中
+                            if not shortTrade:
+                                longTrade.append(exitTrade)
+                                break
+                            # 如果开仓交易还有剩余，则进入下一轮循环
+                            else:
+                                pass
+                        
+            # 空头交易        
+            else:
+                # 如果尚无多头交易
+                if not longTrade:
+                    shortTrade.append(trade)
+                # 当前空头交易为平多
+                else:                    
+                    while True:
+                        entryTrade = longTrade[0]
+                        exitTrade = trade
+                        
+                        # 清算开平仓交易
+                        closedVolume = min(exitTrade.volume, entryTrade.volume)
+                        result = TradingResult(entryTrade.price, entryTrade.dt, 
+                                               exitTrade.price, exitTrade.dt,
+                                               closedVolume, self.rate, self.slippage, self.size)
+                        resultList.append(result)
+                        
+                        posList.extend([1,0])
+                        tradeTimeList.extend([result.entryDt, result.exitDt])
+
+                        # 计算未清算部分
+                        entryTrade.volume -= closedVolume
+                        exitTrade.volume -= closedVolume
+                        
+                        # 如果开仓交易已经全部清算，则从列表中移除
+                        if not entryTrade.volume:
+                            longTrade.pop(0)
+                        
+                        # 如果平仓交易已经全部清算，则退出循环
+                        if not exitTrade.volume:
+                            break
+                        
+                        # 如果平仓交易未全部清算，
+                        if exitTrade.volume:
+                            # 且开仓交易已经全部清算完，则平仓交易剩余的部分
+                            # 等于新的反向开仓交易，添加到队列中
+                            if not longTrade:
+                                shortTrade.append(exitTrade)
+                                break
+                            # 如果开仓交易还有剩余，则进入下一轮循环
+                            else:
+                                pass                    
+        
+        # 到最后交易日尚未平仓的交易，则以最后价格平仓
+        if self.mode == self.BAR_MODE:
+            endPrice = self.bar.close
+        else:
+            endPrice = self.tick.lastPrice
+            
+        for trade in longTrade:
+            result = TradingResult(trade.price, trade.dt, endPrice, self.dt, 
+                                   trade.volume, self.rate, self.slippage, self.size)
+            resultList.append(result)
+            
+        for trade in shortTrade:
+            result = TradingResult(trade.price, trade.dt, endPrice, self.dt, 
+                                   -trade.volume, self.rate, self.slippage, self.size)
+            resultList.append(result)            
+        
+        # 检查是否有交易
+        if not resultList:
+            self.output(u'无交易结果')
+            return {}
+        
+        # 然后基于每笔交易的结果，我们可以计算具体的盈亏曲线和最大回撤等        
+        capital = 0             # 总盈亏
+        maxCapital = 0          # 总盈亏最高净值
+        drawdown = 0            # 损益回撤
+        drawdownrate = 0        # 损益回撤
+        
+        totalResult = 0         # 总成交数量
+        totalTurnover = 0       # 总成交金额（合约面值）
+        totalCommission = 0     # 总手续费
+        totalSlippage = 0       # 总滑点
+        
+        timeList = []           # 时间序列
+        pnlList = []            # 每笔盈亏序列
+        capitalList = []        # 盈亏汇总的时间序列
+        drawdownList = []       # 损益回撤的时间序列
+        drawdownrateList = []   # 损益比回撤的时间序列        
+        winloselist=[]          # 连续盈亏的时间序列      
+        
+        winningResult = 0       # 盈利次数
+        losingResult = 0        # 亏损次数		
+        totalWinning = 0        # 总盈利金额		
+        totalLosing = 0         # 总亏损金额   
+        wincount= 0
+        losecount= 0
+        for result in resultList:
+            capital += result.pnl
+            maxCapital = max(capital, maxCapital)
+            drawdown = capital - maxCapital
+            drawdownrate = drawdown / (maxCapital+self.capital)*100
+            
+            pnlList.append(result.pnl)
+            timeList.append(result.exitDt)      # 交易的时间戳使用平仓时间
+            capitalList.append(capital)
+            drawdownList.append(drawdown)
+            drawdownrateList.append(drawdownrate)
+            
+            totalResult += 1
+            totalTurnover += result.turnover
+            totalCommission += result.commission
+            totalSlippage += result.slippage
+            
+            if result.pnl >= 0:
+                winningResult += 1
+                totalWinning += result.pnl
+                losecount=0
+                wincount+=1
+                winloselist.append(wincount)
+            else:
+                losingResult += 1
+                totalLosing += result.pnl
+                wincount=0
+                losecount-=1
+                winloselist.append(losecount)
+                
+        # 计算盈亏相关数据
+        winningRate = winningResult/totalResult*100         # 胜率
+        
+        averageWinning = 0                                  # 这里把数据都初始化为0
+        averageLosing = 0
+        profitLossRatio = 0
+
+        ###任建军添加
+        averagewininglosing = 0
+        ###任建军添加        
+        
+        if winningResult:
+            averageWinning = totalWinning/winningResult     # 平均每笔盈利
+        if losingResult:
+            averageLosing = totalLosing/losingResult        # 平均每笔亏损
+        if averageLosing:
+            profitLossRatio = -averageWinning/averageLosing # 盈亏比
+        ###任建军添加
+        if totalWinning+totalLosing:
+            averagewininglosing = (totalWinning+totalLosing)/(winningResult+losingResult) #平均盈亏
+        ###任建军添加
+
+        # 返回回测结果
+        d = {}
+        d['capital'] = capital                    # 总盈亏
+        d['maxCapital'] = maxCapital              # 总盈亏最高净值
+        d['drawdown'] = drawdown                  # 损益回撤
+        d['drawdownrate'] = drawdownrate          # 损益回撤比
+        d['totalResult'] = totalResult            # 总成交数量（次数）
+        d['totalTurnover'] = totalTurnover        # 总成交金额（合约面值）
+        d['totalCommission'] = totalCommission    # 总手续费
+        d['totalSlippage'] = totalSlippage        # 总滑点
+        d['timeList'] = timeList                  # 时间序列
+        d['pnlList'] = pnlList                    # 每笔盈亏序列
+        d['capitalList'] = capitalList            # 盈亏汇总的时间序列
+        d['drawdownList'] = drawdownList          # 损益回撤的时间序列
+        d['drawdownrateList'] = drawdownrateList  # 损益回撤的时间序列
+        d['winningRate'] = winningRate            # 胜率
+        d['averageWinning'] = averageWinning      # 平均每笔盈利
+        d['averageLosing'] = averageLosing        # 平均每笔亏损
+        d['profitLossRatio'] = profitLossRatio    # 盈亏比
+        d['posList'] = posList                    # 每笔成交后的持仓情况 
+        d['tradeTimeList'] = tradeTimeList        # 每笔成交时间戳
+        d['resultList'] = resultList              # 交易结果列表
+        d['profitrate'] = (capital/self.capital) * 100    # 盈利率
+        d['totalWinning'] = totalWinning          # 总盈利
+        d['totalLosing']  = totalLosing           # 总亏损
+        d['winningResult']  = winningResult       # 盈利次数
+        d['losingResult']  = losingResult         # 亏损次数
+        d['winloselist']  = winloselist           # 盈亏列表
+        
+        ###任建军添加
+        d['averagewininglosing'] = averagewininglosing #平均盈亏
+        ###任建军添加
+        
+        return d
+    
+    #----------------------------------------------------------------------
+    def showBacktestingResultLikeWH(self, df=None, result=None):
+        """"显示回测结果,类似文华"""
+        d = self.calculateBacktestingResultForWH()
+        #权益的相关指标需要，按日统计每日的资金持有情况，不能按照交易结果统计.请注意损益的统计是按照交易结果统计的
+        df = df.set_index('date')
+        df, result = self.calculateDailyStatisticsForWH(df)                  
+        
+        os.system('cls')
+        tb1 = pt.PrettyTable(["animal", "ferocity"],encoding=sys.stdout.encoding)
+        tb1.field_names = [u'项目']+[u'值']
+        tb1.add_row([u'时间范围',df.index.tolist()[0].strftime("%Y-%m-%d") +' --- '+df.index.tolist()[-1].strftime("%Y-%m-%d") ])
+        tb1.add_row([u'资金分配量',"%(xxx)s"%{'xxx':formatNumber(self.capital)}])
+        tb1.add_row([u'最终权益',"%(xxx)s"%{'xxx':formatNumber(self.capital+d['capital'])}])
+        tb1.add_row(['  ','  '])
+        
+
+        tb1.add_row([u'盈利率',"%(xxx)s%%"%{'xxx':formatNumber(d['profitrate'])}])
+        tb1.add_row([u'总盈利',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning'])}])
+        tb1.add_row([u'总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalLosing'])}])
+        tb1.add_row([u'净利润',"%(xxx)s"%{'xxx':formatNumber(d['capital'])}])
+        tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning']/abs(d['totalLosing']))}])
+        tb1.add_row([u'平均盈利',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning'])}])
+        tb1.add_row([u'平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageLosing'])}])
+        tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning']/abs(d['averageLosing']))}])
+        tb1.add_row(['  ','  '])
+        
+        tb1.add_row([u'交易次数',"%(xxx)s"%{'xxx':d['totalResult']}])
+        tb1.add_row([u'盈利次数',"%(xxx)s"%{'xxx':d['winningResult']}])
+        tb1.add_row([u'亏损次数',"%(xxx)s"%{'xxx':d['losingResult']}])
+        tb1.add_row([u'胜率',"%(xxx)s%%"%{'xxx':formatNumber(d['winningRate'])}])
+        tb1.add_row(['  ','  '])
+        
+
+        tb1.add_row([u'最大盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList']))}])
+        tb1.add_row([u'最大亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList']))}])
+        tb1.add_row([u'最大盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(max(d['pnlList']))].strftime("%Y-%m-%d")}])
+        tb1.add_row([u'最大亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(min(d['pnlList']))].strftime("%Y-%m-%d")}])        
+        tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList'])/abs(d['totalWinning']))}])        
+        tb1.add_row([u'最大亏损/总亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList'])/d['totalLosing'])}])     
+        tb1.add_row([u'最大持续盈利次数',"%(xxx)s"%{'xxx':(max(d['winloselist']))}])        
+        tb1.add_row([u'最大持续盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(max(d['winloselist']))-max(d['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(max(d['winloselist']))].strftime("%Y-%m-%d")}])    
+        tb1.add_row([u'最大持续亏损次数',"%(xxx)s"%{'xxx':(abs(min(d['winloselist'])))}])            
+        tb1.add_row([u'最大持续盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(min(d['winloselist']))-abs(min(d['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(min(d['winloselist']))].strftime("%Y-%m-%d")}])       
+        tb1.add_row(['  ','  '])
+        
+
+        tb1.add_row([u'损益最大回撤',"%(xxx)s"%{'xxx':formatNumber(min(d['drawdownList']))}])     
+        tb1.add_row([u'损益最大回撤时间',"%(xxx)s"%{'xxx':d['timeList'][d['drawdownList'].index(min(d['drawdownList']))].strftime("%Y-%m-%d")}])      
+        tb1.add_row([u'损益最大回撤比',"%(xxx)s"%{'xxx':formatNumber(min(d['drawdownrateList']))}])  
+        tb1.add_row([u'损益最大回撤比时间',"%(xxx)s"%{'xxx':d['timeList'][d['drawdownrateList'].index(min(d['drawdownrateList']))].strftime("%Y-%m-%d")}]) 
+        tb1.add_row([u'权益最大回撤',"%(xxx)s"%{'xxx':formatNumber(result['maxDrawdown'])}])    
+        tb1.add_row([u'权益最大回撤时间',"%(xxx)s"%{'xxx':result['maxDrawdowndate']}])            
+        tb1.add_row([u'权益最大回撤比',"%(xxx)s"%{'xxx':formatNumber(result['maxDdPercent'])}])    
+        tb1.add_row([u'权益最大回撤比时间',"%(xxx)s"%{'xxx':result['maxDdPercentdate']}])             
+        
+        
+        tb1.reversesort = True        
+        print(tb1)
+        # 输出
+        #self.output('-' * 30)
+        #self.output(u'时间范围\t%s' %df.index.tolist()[0].strftime("%Y-%m-%d") +' --- '+df.index.tolist()[-1].strftime("%Y-%m-%d") )    
+        #self.output(u'资金分配量\t%s' %formatNumber(self.capital))    
+        #self.output(u'最终权益\t\t%s' % formatNumber(self.capital+d['capital'])) 
+        #self.output(' ')     
+        
+        #self.output(u'盈利率\t\t%s%%' %formatNumber(d['profitrate']))    
+        #self.output(u'总盈利\t\t%s' % formatNumber(d['totalWinning'])) 
+        #self.output(u'总亏损\t\t%s' % formatNumber(d['totalLosing'])) 
+        #self.output(u'净利润\t\t%s' % formatNumber(d['capital']))
+        #self.output(u'总盈利/总亏损\t%s' %formatNumber(d['totalWinning']/abs(d['totalLosing'])))   
+        #self.output(u'平均盈利\t\t%s' % formatNumber(d['averageWinning'])) 
+        #self.output(u'平均亏损\t\t%s' % formatNumber(d['averageLosing'])) 
+        #self.output(u'平均盈利/平均亏损%s' %formatNumber(d['averageWinning']/abs(d['averageLosing'])))  
+        #self.output(' ')         
+        
+        #self.output(u'交易次数：\t%s' % formatNumber(d['totalResult']))     
+        #self.output(u'盈利次数：\t%s' % formatNumber(d['winningResult']))   
+        #self.output(u'亏损次数：\t%s' % formatNumber(d['losingResult']))   
+        #self.output(u'胜率\t\t%s%%' %formatNumber(d['winningRate']))      
+        #self.output(' ')                        
+        
+        #self.output(u'最大盈利：\t%s' % formatNumber(max(d['pnlList'])))  
+        #self.output(u'最大亏损：\t%s' % formatNumber(min(d['pnlList'])))     
+        #self.output(u'最大盈利时间\t%s'  % d['timeList'][d['pnlList'].index(max(d['pnlList']))].strftime("%Y-%m-%d"))
+        #self.output(u'最大亏损时间\t%s'  % d['timeList'][d['pnlList'].index(min(d['pnlList']))].strftime("%Y-%m-%d"))
+        #self.output(u'最大盈利/总盈利\t%s' %formatNumber(max(d['pnlList'])/abs(d['totalWinning']))) 
+        #self.output(u'最大亏损/总亏损\t%s' %formatNumber(min(d['pnlList'])/d['totalLosing']))   
+        #self.output(u'最大持续盈利次数\t%s' %formatNumber(max(d['winloselist'])))    
+        #self.output(u'最大持续盈利时间\t%s'  % d['timeList'][d['winloselist'].index(max(d['winloselist']))-max(d['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(max(d['winloselist']))].strftime("%Y-%m-%d")) 
+        #self.output(u'最大持续亏损次数\t%s' %formatNumber(abs(min(d['winloselist']))))     
+        #self.output(u'最大持续亏损时间\t%s'  % d['timeList'][d['winloselist'].index(min(d['winloselist']))-abs(min(d['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(min(d['winloselist']))].strftime("%Y-%m-%d"))
+        #self.output(' ')    
+            
+        #self.output(u'损益最大回撤: \t%s' % formatNumber(min(d['drawdownList'])))     
+        #self.output(u'损益最大回撤时间\t%s'  % d['timeList'][d['drawdownList'].index(min(d['drawdownList']))].strftime("%Y-%m-%d"))
+        #self.output(u'损益最大回撤比: \t%s%%' % formatNumber(min(d['drawdownrateList']))) 
+        #self.output(u'损益最大回撤时间\t%s'  % d['timeList'][d['drawdownrateList'].index(min(d['drawdownrateList']))].strftime("%Y-%m-%d"))
+        #self.output(u'权益最大回撤: \t%s' % formatNumber(result['maxDrawdown']))     
+        #self.output(u'权益最大回撤时间\t%s'  % result['maxDrawdowndate'])
+        #self.output(u'权益最大回撤比: \t%s%%' % formatNumber(result['maxDdPercent']))    
+        #self.output(u'权益最大回撤时间\t%s'  % result['maxDdPercentdate'])      
+        
+        '''
+        # 绘图
+        fig = plt.figure(figsize=(10, 16))
+        
+        pCapital = plt.subplot(4, 1, 1)
+        pCapital.set_ylabel("capital")
+        pCapital.plot(d['capitalList'], color='r', lw=0.8)
+        
+        pDD = plt.subplot(4, 1, 2)
+        pDD.set_ylabel("DD")
+        pDD.bar(range(len(d['drawdownList'])), d['drawdownList'], color='g')
+        
+        pPnl = plt.subplot(4, 1, 3)
+        pPnl.set_ylabel("pnl")
+        pPnl.hist(d['pnlList'], bins=50, color='c')
+
+        pPos = plt.subplot(4, 1, 4)
+        pPos.set_ylabel("Position")
+        if d['posList'][-1] == 0:
+            del d['posList'][-1]
+        tradeTimeIndex = [item.strftime("%m/%d %H:%M:%S") for item in d['tradeTimeList']]
+        xindex = np.arange(0, len(tradeTimeIndex), np.int(len(tradeTimeIndex)/10))
+        tradeTimeIndex = map(lambda i: tradeTimeIndex[i], xindex)
+        pPos.plot(d['posList'], color='k', drawstyle='steps-pre')
+        pPos.set_ylim(-1.2, 1.2)
+        plt.sca(pPos)
+        plt.tight_layout()
+        plt.xticks(xindex, tradeTimeIndex, rotation=30)  # 旋转15
+        
+        plt.show()
+        '''
+
+    
         
 ########################################################################
 class TradingResult(object):
@@ -1514,7 +1981,7 @@ def optimize(strategyClass, setting, targetName,
     df = engine.calculateDailyResult()
     df, d = engine.calculateDailyStatistics(df)
     ###任建军添加
-    d1= engine.calculateBacktestingResult()
+    d1= engine.calculateBacktestingResultForWH()
     ###任建军添加
     try:
         targetValue = d[targetName]

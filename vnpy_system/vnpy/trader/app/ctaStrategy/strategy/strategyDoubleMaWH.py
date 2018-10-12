@@ -128,7 +128,6 @@ class DoubleMaStrategyWh(CtaTemplate):
         """收到Bar推送（必须由用户继承实现）"""
         am = self.am        
         am.updateBar(bar)
-        
         if not am.inited:
             return
                 

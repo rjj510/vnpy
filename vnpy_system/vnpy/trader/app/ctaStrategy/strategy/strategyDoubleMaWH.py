@@ -23,17 +23,32 @@ class DoubleMaStrategyWh(CtaTemplate):
     A_WEIGHT      = 10       #{每手吨数                }                 
     A_BZJ         = 0.14     #{保证金参数              }
     #--------------以下是可以优化的策略----------------------------
-    A_LONG        = 22       #{做多交易均线       默认 }                     
-    A_DAYS_BK     = 0        #{交易线开仓穿越天数 用于买开  默认2 }     
+    '''
+    A_LONG        = 25       #{做多交易均线天数       默认 }   
+    E_LONG        = 93       #{做多趋势均线天数}                                      
+    A_DAYS_BK     = 0        #{交易线开仓穿越天数 用于买开  默认2 }  
+    A_DAYS_SP     = 2        #{交易线平仓穿越天数 用于卖平  默认2 }                              
+    E_DAYS_LONG   = 2        #{做多从下到上的天数}                       
     A_RATE_BK_MIN = 0.1      #{交易线开仓穿越幅度 用于买开  默认2 }    
     A_RATE_BK_MAX = 1.8      #{交易线开仓穿越幅度 用于买开  默认2 }     
-    A_DAYS_SP     = 1        #{交易线平仓穿越天数 用于卖平  默认2 }     
     A_RATE_SP     = 0.94     #{交易线平仓穿越幅度 用于卖平  默认1.2}    
-    A_LOSS_SP     =0.08      #{保证金亏损幅度     用于卖平  默认0.45}    
-    A_DAY_LOSS    =1.65      #{达到当日最大跌幅   用于卖平  默认2.3}    
-    A_FLAOT_PROFIT=3200      #{最大浮盈           用于卖平  默认}     
-    E_LONG        = 92       #{做多趋势均线}                              
-    E_DAYS_LONG   = 7        #{做多从下到上的天数}                                
+    A_LOSS_SP     = 0.08     #{保证金亏损幅度     用于卖平  默认0.45}    
+    A_DAY_LOSS    = 1.7      #{达到当日最大跌幅   用于卖平  默认2.3}    
+    A_FLAOT_PROFIT= 2900     #{最大浮盈           用于卖平  默认}  
+    '''
+    
+    A_LONG        = 19       #{做多交易均线天数       默认 }   
+    E_LONG        = 115       #{做多趋势均线天数}                                      
+    A_DAYS_BK     = 0        #{交易线开仓穿越天数 用于买开  默认2 }  
+    A_DAYS_SP     = 2        #{交易线平仓穿越天数 用于卖平  默认2 }                              
+    E_DAYS_LONG   = 1        #{做多从下到上的天数}                       
+    A_RATE_BK_MIN = 0.3      #{交易线开仓穿越幅度 用于买开  默认2 }    
+    A_RATE_BK_MAX = 2.38     #{交易线开仓穿越幅度 用于买开  默认2 }     
+    A_RATE_SP     = 0.1      #{交易线平仓穿越幅度 用于卖平  默认1.2}    
+    A_LOSS_SP     = 0.15     #{保证金亏损幅度     用于卖平  默认0.45}    
+    A_DAY_LOSS    = 2.4      #{达到当日最大跌幅   用于卖平  默认2.3}    
+    A_FLAOT_PROFIT= 3800     #{最大浮盈           用于卖平  默认}  
+    
     
     # 策略变量
     A_ma0   = EMPTY_FLOAT
@@ -44,7 +59,7 @@ class DoubleMaStrategyWh(CtaTemplate):
     BKPRICE = EMPTY_FLOAT_WH
     E_ma0   = EMPTY_FLOAT
     E_ma1   = EMPTY_FLOAT    
-    initDays = E_LONG+E_DAYS_LONG            # 初始化数据所用的天数
+    initDays= E_LONG+E_DAYS_LONG            # 初始化数据所用的天数
     
     # 参数列表，保存了参数的名称
     paramList = ['name',
@@ -76,8 +91,10 @@ class DoubleMaStrategyWh(CtaTemplate):
         """Constructor"""
         super(DoubleMaStrategyWh, self).__init__(ctaEngine, setting)
         
+        self.initDays= self.E_LONG+self.E_DAYS_LONG
+        
         self.bg = BarGenerator(self.onBar)
-        self.am = ArrayManager()
+        self.am = ArrayManager(self.initDays)
         
         # 注意策略类中的可变对象属性（通常是list和dict等），在策略初始化时需要重新创建，
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
@@ -100,6 +117,7 @@ class DoubleMaStrategyWh(CtaTemplate):
         """初始化策略（必须由用户继承实现）"""
         self.writeCtaLog(u'双EMA演示策略初始化')
         
+        #initData = self.loadBar(self.ctaEngine.initDays)
         initData = self.loadBar(self.initDays)
         for bar in initData:
             self.onBar(bar)
@@ -130,7 +148,7 @@ class DoubleMaStrategyWh(CtaTemplate):
         am.updateBar(bar)
         if not am.inited:
             return
-                
+                        
         #/*用CLOSE上下穿越交易均线，来确定买入或者卖出时机*/
         #//A=TRADE 交易
         #//E=TREND 趋势      

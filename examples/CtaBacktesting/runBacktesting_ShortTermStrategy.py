@@ -13,7 +13,7 @@ initdays= 0
 #----------------------------------------------------------------------
 def calculateDailyResult_init():
     """主函数，供其他python程序进行模块化程序初始化调用"""
-    from vnpy.trader.app.ctaStrategy.strategy.strategyDoubleMaWH import DoubleMaStrategyWh
+    from vnpy.trader.app.ctaStrategy.strategy.strategyShortTerm import ShortTermStrategy
     
     # 创建回测引擎
     engine = BacktestingEngine()
@@ -31,37 +31,13 @@ def calculateDailyResult_init():
     
     # 在引擎中创建策略对象
     d = {}
-    engine.initStrategy(DoubleMaStrategyWh, d)
+    engine.initStrategy(ShortTermStrategy, d)
     return engine
 
 #----------------------------------------------------------------------
 '''根据计算每日结果，输出到CSV中'''
 def calculateDailyResult_to_CSV(engine,date,csvfile):
     """主函数，供其他python程序进行模块化程序调用"""
-    '''
-    from vnpy.trader.app.ctaStrategy.strategy.strategyDoubleMaWH import DoubleMaStrategyWh
-    
-    # 创建回测引擎
-    engine = BacktestingEngine()
-    
-    # 设置引擎的回测模式为K线
-    engine.setBacktestingMode(engine.BAR_MODE)
-
-
-    
-    # 设置产品相关参数
-    engine.setSlippage(0)      # 股指1跳
-    engine.setRate(0)          # 万0.3
-    engine.setSize(10)         # 股指合约大小 
-    engine.setPriceTick(1)     # 股指最小价格变动
-    engine.setCapital(30000)
-    
-
-    
-    # 在引擎中创建策略对象
-    d = {}
-    engine.initStrategy(DoubleMaStrategyWh, d)
-    '''
     # 设置回测用的数据起始日期
     engine.setStartDate(date)
     
@@ -85,7 +61,7 @@ def get_strategy_init_days(engine):
     
 if __name__ == '__main__' :
     #or  __name__ == 'runBacktesting_WH':
-    from vnpy.trader.app.ctaStrategy.strategy.strategyDoubleMaWH import DoubleMaStrategyWh
+    from vnpy.trader.app.ctaStrategy.strategy.strategyShortTerm import ShortTermStrategy
     # 创建回测引擎
     engine = BacktestingEngine()
     # 设置引擎的回测模式为K线
@@ -106,7 +82,7 @@ if __name__ == '__main__' :
     
     # 在引擎中创建策略对象
     d = {}
-    engine.initStrategy(DoubleMaStrategyWh, d)
+    engine.initStrategy(ShortTermStrategy, d)
     # 开始跑回测
     engine.runBacktesting()
     

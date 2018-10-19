@@ -38,14 +38,14 @@ def loadWhCsv(fileName, dbName, symbol):
             bar = VtBarData()
             bar.vtSymbol = symbol
             bar.symbol = symbol
-            bar.open = float(d['Open'])
-            bar.high = float(d['High'])
-            bar.low = float(d['Low'])
-            bar.close = float(d['Close'])
-            bar.date = datetime.strptime(d['Date'], '%Y-%m-%d').strftime('%Y%m%d')
+            bar.open = float(d['open'])
+            bar.high = float(d['high'])
+            bar.low = float(d['low'])
+            bar.close = float(d['close'])
+            bar.date = datetime.strptime(d['datetime'], '%Y-%m-%d').strftime('%Y%m%d')
             bar.time = ''
             bar.datetime = datetime.strptime(bar.date, '%Y%m%d')
-            bar.volume = d['TotalVolume']
+            bar.volume = d['volume']
     
             flt = {'datetime': bar.datetime}
             collection.update_one(flt, {'$set':bar.__dict__}, upsert=True)  

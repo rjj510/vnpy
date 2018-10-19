@@ -95,6 +95,8 @@ class BacktestingEngine(object):
         
         self.logList = []               # 日志记录
         
+        self.poolscount=[0,0]       #根据运行参数确定的计算的总次数,已经执行结束的参数的次数
+        
         # 当前最新数据，用于模拟成交用
         self.tick = None
         self.bar = None
@@ -120,7 +122,7 @@ class BacktestingEngine(object):
     def output(self, content):
         """输出内容"""
         print(str(datetime.now()) + "\t" + content)     
-
+        pass
         
         
     #------------------------------------------------
@@ -866,6 +868,8 @@ class BacktestingEngine(object):
     def showBacktestingResult(self):
         """显示回测结果"""
         d = self.calculateBacktestingResult()
+        if len(d) == 0:
+            return
         
         # 输出
         self.output('-' * 30)
@@ -937,7 +941,7 @@ class BacktestingEngine(object):
         
     #----------------------------------------------------------------------
     def runOptimization(self, strategyClass, optimizationSetting):
-        """优化参数"""
+        """单进程优化参数"""
         # 获取优化设置        
         settingList = optimizationSetting.generateSetting()
         targetName = optimizationSetting.optimizeTarget
@@ -981,7 +985,7 @@ class BacktestingEngine(object):
         ###任建军添加
         for i in range(len(resultList_csv)):
             Optimization_result_csv = Optimization_result_csv.append(resultList_csv[i],ignore_index=True)         
-        Optimization_result_csv.to_csv(r'F:\QH\LWZS_DATA\HCJG.csv',encoding='utf_8_sig',mode='w',index=False)
+        Optimization_result_csv.to_csv(u'F:\\uiKLine\\data\\Optimization\\OptimizationResult.csv',encoding='utf_8_sig',mode='w',index=False)
         ###任建军添加
         
         
@@ -995,10 +999,15 @@ class BacktestingEngine(object):
             
     #----------------------------------------------------------------------
     def runParallelOptimization(self, strategyClass, optimizationSetting):
-        """并行优化参数"""
+        """多进程并行优化参数"""
         # 获取优化设置        
         settingList = optimizationSetting.generateSetting()
         targetName = optimizationSetting.optimizeTarget
+        
+        self.poolscount[0] = len(settingList)
+        for num in range(1,self.poolscount[0]+1):
+            self.poolscount.append(num)
+        mylist=multiprocessing.Manager().list(self.poolscount) 
         
         # 检查参数设置问题
         if not settingList or not targetName:
@@ -1008,13 +1017,15 @@ class BacktestingEngine(object):
         pool = multiprocessing.Pool(multiprocessing.cpu_count())
         l = []
 
+        num=1
         for setting in settingList:
             # 任建军修改 添加了self.capital参数
             l.append(pool.apply_async(optimize, (strategyClass, setting,
                                                  targetName, self.mode, 
                                                  self.startDate, self.initDays, self.endDate,
                                                  self.slippage, self.rate, self.size, self.priceTick,
-                                                 self.dbName, self.symbol,self.capital)))
+                                                 self.dbName, self.symbol,self.capital,mylist,num)))
+            num+=1
         pool.close()
         pool.join()   
         
@@ -1025,14 +1036,19 @@ class BacktestingEngine(object):
             d      =result[2]
             d1     =result[3]              
             setting=result[4]
-            s = pd.Series([setting.values(),float('%.2f'%d['totalReturn']),float('%.2f'%d1['averagewininglosing']),float('%.2f'%d1['winningRate']),d['totalTradeCount'],float('%.2f'%d1['profitLossRatio']),float('%.2f'%d['maxDrawdown']),float('%.2f'%d['maxDdPercent']),float('%.2f'%min(d1['drawdownList'])),float('%.2f'%min(d1['drawdownrateList']))],\
-                          index =         ['参数组'  , '累计收益率'                  , '平均盈亏'                             , '胜率'                        , '交易次数'          , '平均盈利/平均亏损'                , '权益最大回撤'                ,'权益最大回撤比'                ,'损益最大回撤'                       ,'损益最大回撤比'])
-            resultList_csv.append(s)            
+            if len(d) == 0 or len(d1) == 0:
+                pass
+                #s = pd.Series([setting.values(),            float(0)    ,  float(0) ,  float(0)    ,    0     ,           0          ,    float(0)        ,float(0)         ,float(0)      , float(0)],\
+                #              index =         ['参数组'  , '累计收益率'  , '平均盈亏'  , '胜率'      , '交易次数', '平均盈利/平均亏损'   , '权益最大回撤'      ,'权益最大回撤比'  ,'损益最大回撤' ,'损益最大回撤比'])
+            else:
+                s = pd.Series([setting,'%02.2f'%float(d['totalReturn']),'%02.2f'%float(d1['averagewininglosing']),'%02.2f'%float(d1['winningRate']),d['totalTradeCount'],'%02.2f'%float(d1['profitLossRatio']),'%02.2f'%float(d['maxDrawdown']),'%02.2f'%float(d['maxDdPercent']),'%02.2f'%float(min(d1['drawdownList'])),'%02.2f'%float(min(d1['drawdownrateList']))],\
+                              index =         ['参数组'  , '累计收益率'                  , '平均盈亏'                             , '胜率'                        , '交易次数'          , '平均盈利/平均亏损'                , '权益最大回撤'                ,'权益最大回撤比'                ,'损益最大回撤'                       ,'损益最大回撤比'])
+                resultList_csv.append(s)            
 
         Optimization_result_csv = pd.DataFrame(columns = ['参数组', '累计收益率', '平均盈亏', '胜率', '交易次数', '平均盈利/平均亏损', '权益最大回撤','权益最大回撤比','损益最大回撤','损益最大回撤比'])
         for i in range(len(resultList_csv)):
             Optimization_result_csv = Optimization_result_csv.append(resultList_csv[i],ignore_index=True)         
-        Optimization_result_csv.to_csv(r'F:\QH\LWZS_DATA\MP_HCJG.csv',encoding='utf_8_sig',mode='w',index=False)                
+        Optimization_result_csv.to_csv(r'F:\\uiKLine\\data\\Optimization\OptimizationResult.csv',encoding='utf_8_sig',mode='w',index=False)                
         ###任建军添加
         
         
@@ -1046,6 +1062,71 @@ class BacktestingEngine(object):
             
         return resultList
 
+    #----------------------------------------------------------------------
+    def runParallelOptimization_batch(self, strategyClass, optimizationSetting,settingList):
+        """多进程分批并行优化参数"""
+        # 获取优化设置        
+        targetName = optimizationSetting.optimizeTarget
+        
+        self.poolscount= [0,0]
+        self.poolscount[0] = len(settingList)
+        for num in range(1,self.poolscount[0]+1):
+            self.poolscount.append(num)
+        mylist=multiprocessing.Manager().list(self.poolscount) 
+        
+        # 检查参数设置问题
+        if not settingList or not targetName:
+            self.output(u'优化设置有问题，请检查')
+        
+        # 多进程优化，启动一个对应CPU核心数量的进程池
+        pool = multiprocessing.Pool(multiprocessing.cpu_count())
+        l = []
+
+        num=1
+        for setting in settingList:
+            # 任建军修改 添加了self.capital参数
+            l.append(pool.apply_async(optimize, (strategyClass, setting,
+                                                 targetName, self.mode, 
+                                                 self.startDate, self.initDays, self.endDate,
+                                                 self.slippage, self.rate, self.size, self.priceTick,
+                                                 self.dbName, self.symbol,self.capital,mylist,num)))
+            num+=1
+        pool.close()
+        pool.join()   
+        
+        ###任建军添加
+        resultList_run_csv = [res.get() for res in l]   
+        resultList_csv= []
+        for result in resultList_run_csv:
+            d      =result[2]
+            d1     =result[3]              
+            setting=result[4]
+            if len(d) == 0 or len(d1) == 0:
+                pass
+                #s = pd.Series([setting.values(),            float(0)    ,  float(0) ,  float(0)    ,    0     ,           0          ,    float(0)        ,float(0)         ,float(0)      , float(0)],\
+                #              index =         ['参数组'  , '累计收益率'  , '平均盈亏'  , '胜率'      , '交易次数', '平均盈利/平均亏损'   , '权益最大回撤'      ,'权益最大回撤比'  ,'损益最大回撤' ,'损益最大回撤比'])
+            else:
+                s = pd.Series([setting,'%02.2f'%float(d['totalReturn']),'%02.2f'%float(d1['averagewininglosing']),'%02.2f'%float(d1['winningRate']),d['totalTradeCount'],'%02.2f'%float(d1['profitLossRatio']),'%02.2f'%float(d['maxDrawdown']),'%02.2f'%float(d['maxDdPercent']),'%02.2f'%float(min(d1['drawdownList'])),'%02.2f'%float(min(d1['drawdownrateList']))],\
+                              index =         ['参数组'  , '累计收益率'                  , '平均盈亏'                             , '胜率'                        , '交易次数'          , '平均盈利/平均亏损'                , '权益最大回撤'                ,'权益最大回撤比'                ,'损益最大回撤'                       ,'损益最大回撤比'])
+                resultList_csv.append(s)            
+
+            Optimization_result_csv = pd.DataFrame(columns = ['参数组', '累计收益率', '平均盈亏', '胜率', '交易次数', '平均盈利/平均亏损', '权益最大回撤','权益最大回撤比','损益最大回撤','损益最大回撤比'])
+            for i in range(len(resultList_csv)):
+                Optimization_result_csv = Optimization_result_csv.append(resultList_csv[i],ignore_index=True)         
+            Optimization_result_csv.to_csv(r'F:\\uiKLine\\data\\Optimization\OptimizationResult.csv',encoding='utf_8_sig',mode='a+',index=False)                
+        ###任建军添加
+        
+        
+        # 显示结果
+        resultList = [res.get() for res in l]
+        resultList.sort(reverse=True, key=lambda result:result[1])
+        self.output('-' * 30)
+        self.output(u'优化结果：')
+        for result in resultList:
+            self.output(u'参数：%s，目标：%s' %(result[0], result[1]))    
+            
+        return resultList
+        
     #----------------------------------------------------------------------
     def updateDailyClose(self, dt, price):
         """更新每日收盘价"""
@@ -1962,7 +2043,7 @@ def formatNumber(n):
 def optimize(strategyClass, setting, targetName,
              mode, startDate, initDays, endDate,
              slippage, rate, size, priceTick,
-             dbName, symbol,capital):
+             dbName, symbol,capital,poolscount,num):
     """多进程优化时跑在每个进程中运行的函数"""
     engine = BacktestingEngine()
     engine.setBacktestingMode(mode)
@@ -1978,7 +2059,13 @@ def optimize(strategyClass, setting, targetName,
     engine.initStrategy(strategyClass, setting)
     engine.runBacktesting()
     
+    
+    print('总次数：%d , 当前次数：%d , 执行进度%02.2f%%'%(poolscount[0],poolscount[num],float(poolscount[num]/poolscount[0]*100)))
+    
+    
     df = engine.calculateDailyResult()
+    if len(df) == 0:
+        return (str(setting), 0,{},{},setting)  
     df, d = engine.calculateDailyStatistics(df)
     ###任建军添加
     d1= engine.calculateBacktestingResultForWH()
@@ -1988,8 +2075,8 @@ def optimize(strategyClass, setting, targetName,
     except KeyError:
         targetValue = 0          
     #原始代码    
-    #return (str(setting), targetValue, d)    
+    #return (str(setting), targetValue,d)    
     ###任建军添加
-    return (str(setting), targetValue, d,d1,setting)    
+    return (str(setting), targetValue,d,d1,setting)    
     ###任建军添加
     

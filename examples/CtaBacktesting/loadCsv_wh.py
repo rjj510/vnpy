@@ -9,5 +9,5 @@ from vnpy.trader.app.ctaStrategy.ctaHistoryData_wh import loadWhCsv
 
 
 if __name__ == '__main__':
-    loadWhCsv(u'F:\\uiKLine\\data\\dailydata\\RB9999_increment.csv', DAILY_DB_NAME, 'RB9999')
-    #loadWhCsv(u'F:\\uiKLine\\data\\dailydata\\RB9999.csv', DAILY_DB_NAME, 'RB9999')
+    #loadWhCsv(u'F:\\uiKLine\\data\\dailydata\\RB9999_increment.csv', DAILY_DB_NAME, 'RB9999')
+    loadWhCsv(u'F:\\uiKLine\\data\\dailydata\\RB9999.csv', DAILY_DB_NAME, 'RB9999')

@@ -6,15 +6,16 @@
 
 from __future__ import division
 
+import os
 
 from vnpy.trader.app.ctaStrategy.ctaBacktesting import BacktestingEngine, MINUTE_DB_NAME,DAILY_DB_NAME
-initdays= 0
 
+import vnpy.trader.app.ctaStrategy.strategy.strategyShortTerm as STS
 #----------------------------------------------------------------------
 def calculateDailyResult_init():
     """主函数，供其他python程序进行模块化程序初始化调用"""
-    from vnpy.trader.app.ctaStrategy.strategy.strategyShortTerm import ShortTermStrategy
-    
+    #from vnpy.trader.app.ctaStrategy.strategy.strategyShortTerm import ShortTermStrategy
+    reload(STS)
     # 创建回测引擎
     engine = BacktestingEngine()
     
@@ -28,18 +29,18 @@ def calculateDailyResult_init():
     engine.setPriceTick(1)     # 股指最小价格变动
     engine.setCapital(30000)
     
-    
     # 在引擎中创建策略对象
     d = {}
-    engine.initStrategy(ShortTermStrategy, d)
+    engine.initStrategy(STS.ShortTermStrategy, d)
     return engine
 
 #----------------------------------------------------------------------
 '''根据计算每日结果，输出到CSV中'''
-def calculateDailyResult_to_CSV(engine,date,csvfile):
+def calculateDailyResult_to_CSV(engine,date,pos,csvfile):
     """主函数，供其他python程序进行模块化程序调用"""
     # 设置回测用的数据起始日期
-    engine.setStartDate(date)
+    engine.setStartDate('20090327')
+    engine.strategy.strategyStartpos = pos
     
     # 设置使用的历史数据库
     engine.setDatabase(DAILY_DB_NAME, 'RB9999')
@@ -51,13 +52,14 @@ def calculateDailyResult_to_CSV(engine,date,csvfile):
     df= engine.calculateDailyResult_to_CSV(csvfile)    
   
     # 显示回测结果  用于文华的ctrl+G的快捷键功能
+    os.system('cls')
+    print(u"RB9999 短期结构交易系统")
+    print('start date:'+date)
     engine.showBacktestingResultLikeWH(df)
 #----------------------------------------------------------------------
 '''获得策略需要的初始化时间'''
 def get_strategy_init_days(engine):
-    global initdays
-    return engine.strategy.E_LONG+engine.strategy.E_DAYS_LONG  
-        
+    return engine.strategy.initDays        
     
 if __name__ == '__main__' :
     #or  __name__ == 'runBacktesting_WH':
@@ -68,7 +70,7 @@ if __name__ == '__main__' :
     engine.setBacktestingMode(engine.BAR_MODE)
 
     # 设置回测用的数据起始日期
-    engine.setStartDate('20090327')
+    engine.setStartDate('20090329')
     
     # 设置产品相关参数
     engine.setSlippage(0)      # 股指1跳
@@ -83,6 +85,8 @@ if __name__ == '__main__' :
     # 在引擎中创建策略对象
     d = {}
     engine.initStrategy(ShortTermStrategy, d)
+
+    engine.strategy.strategyStartpos = 0    
     # 开始跑回测
     engine.runBacktesting()
     

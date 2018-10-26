@@ -220,7 +220,6 @@ class DoubleMaStrategyWh(CtaTemplate):
             self.buy(bar.close, 1)
         if GOING_SP and self.pos == 1:
             self.sell(bar.close, 1)
-                
         # 发出状态更新事件
         self.putEvent()
         

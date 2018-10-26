@@ -6,6 +6,7 @@
 
 from __future__ import division
 
+import os
 
 from vnpy.trader.app.ctaStrategy.ctaBacktesting import BacktestingEngine, MINUTE_DB_NAME,DAILY_DB_NAME
 initdays= 0
@@ -75,6 +76,8 @@ def calculateDailyResult_to_CSV(engine,date,csvfile):
     df= engine.calculateDailyResult_to_CSV(csvfile)    
   
     # 显示回测结果  用于文华的ctrl+G的快捷键功能
+    os.system('cls')
+    print(u"RB9999 均线交易系统")
     engine.showBacktestingResultLikeWH(df)
 #----------------------------------------------------------------------
 '''获得策略需要的初始化时间'''

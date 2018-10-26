@@ -61,6 +61,8 @@ class BacktestingEngine(object):
         
         self.engineType = ENGINETYPE_BACKTESTING    # 引擎类型为回测
         
+        self.outputshow = True      # outputshow是否显示
+        
         self.strategy = None        # 回测策略
         self.mode = self.BAR_MODE   # 回测模式，默认为K线
         
@@ -121,7 +123,8 @@ class BacktestingEngine(object):
     #----------------------------------------------------------------------
     def output(self, content):
         """输出内容"""
-        print(str(datetime.now()) + "\t" + content)     
+        if self.outputshow :
+            print(str(datetime.now()) + "\t" + content)     
         pass
         
         
@@ -870,7 +873,6 @@ class BacktestingEngine(object):
         d = self.calculateBacktestingResult()
         if len(d) == 0:
             return
-        
         # 输出
         self.output('-' * 30)
         self.output(u'第一笔交易：\t%s' % d['timeList'][0])
@@ -889,6 +891,7 @@ class BacktestingEngine(object):
         self.output(u'亏损交易平均值\t%s' %formatNumber(d['averageLosing']))
         self.output(u'盈亏比：\t%s' %formatNumber(d['profitLossRatio']))
     
+        
         # 绘图
         fig = plt.figure(figsize=(10, 16))
         
@@ -909,6 +912,8 @@ class BacktestingEngine(object):
         if d['posList'][-1] == 0:
             del d['posList'][-1]
         tradeTimeIndex = [item.strftime("%m/%d %H:%M:%S") for item in d['tradeTimeList']]
+        if len(tradeTimeIndex)==0:
+            return
         xindex = np.arange(0, len(tradeTimeIndex), np.int(len(tradeTimeIndex)/10))
         tradeTimeIndex = map(lambda i: tradeTimeIndex[i], xindex)
         pPos.plot(d['posList'], color='k', drawstyle='steps-pre')
@@ -918,6 +923,7 @@ class BacktestingEngine(object):
         plt.xticks(xindex, tradeTimeIndex, rotation=30)  # 旋转15
         
         plt.show()
+        
     
     #----------------------------------------------------------------------
     def clearBacktestingResult(self):
@@ -1700,11 +1706,13 @@ class BacktestingEngine(object):
     def showBacktestingResultLikeWH(self, df=None, result=None):
         """"显示回测结果,类似文华"""
         d = self.calculateBacktestingResultForWH()
+        if len(d) == 0:
+            return
+        # 输出        
         #权益的相关指标需要，按日统计每日的资金持有情况，不能按照交易结果统计.请注意损益的统计是按照交易结果统计的
         df = df.set_index('date')
         df, result = self.calculateDailyStatisticsForWH(df)                  
         
-        os.system('cls')
         tb1 = pt.PrettyTable(["animal", "ferocity"],encoding=sys.stdout.encoding)
         tb1.field_names = [u'项目']+[u'值']
         tb1.add_row([u'时间范围',df.index.tolist()[0].strftime("%Y-%m-%d") +' --- '+df.index.tolist()[-1].strftime("%Y-%m-%d") ])
@@ -1717,10 +1725,18 @@ class BacktestingEngine(object):
         tb1.add_row([u'总盈利',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning'])}])
         tb1.add_row([u'总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalLosing'])}])
         tb1.add_row([u'净利润',"%(xxx)s"%{'xxx':formatNumber(d['capital'])}])
-        tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning']/abs(d['totalLosing']))}])
+        if d['totalLosing'] == 0:
+            tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(0)}])
+        else:
+            tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning']/abs(d['totalLosing']))}])
+            
         tb1.add_row([u'平均盈利',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning'])}])
         tb1.add_row([u'平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageLosing'])}])
-        tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning']/abs(d['averageLosing']))}])
+        if d['averageLosing']==0:
+            tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(0)}])
+        else:
+
+            tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning']/abs(d['averageLosing']))}])            
         tb1.add_row(['  ','  '])
         
         tb1.add_row([u'交易次数',"%(xxx)s"%{'xxx':d['totalResult']}])
@@ -1734,8 +1750,12 @@ class BacktestingEngine(object):
         tb1.add_row([u'最大亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList']))}])
         tb1.add_row([u'最大盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(max(d['pnlList']))].strftime("%Y-%m-%d")}])
         tb1.add_row([u'最大亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(min(d['pnlList']))].strftime("%Y-%m-%d")}])        
-        tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList'])/abs(d['totalWinning']))}])        
-        tb1.add_row([u'最大亏损/总亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList'])/d['totalLosing'])}])     
+        tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList'])/abs(d['totalWinning']))}])     
+        if d['totalLosing'] == 0:
+            tb1.add_row([u'最大亏损/总亏损',"%(xxx)s"%{'xxx':formatNumber(0)}])  
+        else:
+            tb1.add_row([u'最大亏损/总亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList'])/d['totalLosing'])}])  
+            
         tb1.add_row([u'最大持续盈利次数',"%(xxx)s"%{'xxx':(max(d['winloselist']))}])        
         tb1.add_row([u'最大持续盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(max(d['winloselist']))-max(d['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(max(d['winloselist']))].strftime("%Y-%m-%d")}])    
         tb1.add_row([u'最大持续亏损次数',"%(xxx)s"%{'xxx':(abs(min(d['winloselist'])))}])            
@@ -2046,6 +2066,7 @@ def optimize(strategyClass, setting, targetName,
              dbName, symbol,capital,poolscount,num):
     """多进程优化时跑在每个进程中运行的函数"""
     engine = BacktestingEngine()
+    engine.outputshow=False
     engine.setBacktestingMode(mode)
     engine.setStartDate(startDate, initDays)
     engine.setEndDate(endDate)

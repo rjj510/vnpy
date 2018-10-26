@@ -482,7 +482,8 @@ class ArrayManager(object):
     def updateBar(self, bar):
         """更新K线"""
         self.count += 1
-        if not self.inited and self.count >= self.size:
+        #if not self.inited and self.count >= self.size:
+        if not self.inited and self.count > self.size:
             self.inited = True
         
         self.openArray[0:self.size-1] = self.openArray[1:self.size]

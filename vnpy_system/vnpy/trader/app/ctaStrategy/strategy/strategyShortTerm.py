@@ -2,6 +2,11 @@
 
 """
 这里的策略是根据《短线交易秘诀（原书第2版）》第一章1.4认识市场结构的内容编写而成。
+中英对照
+买开 BK
+卖平 SP
+卖开 SK
+卖平 BP 
 """
 
 from __future__ import division
@@ -10,6 +15,9 @@ from vnpy.trader.vtConstant import EMPTY_STRING, EMPTY_FLOAT,DIRECTION_LONG,OFFS
 from vnpy.trader.app.ctaStrategy.ctaTemplate import (CtaTemplate, 
                                                      BarGenerator,
                                                      ArrayManager)
+import json
+import numpy as np
+import copy
 
 EMPTY_INT_WH = -1
 EMPTY_FLOAT_WH = -1.0
@@ -25,13 +33,28 @@ class ShortTermStrategy(CtaTemplate):
     #--------------以下是可以优化的策略----------------------------     
         
     # 策略变量
-    initDays= 1            # 初始化数据所用的天数
+    initDays= 1                          # 初始化数据所用的天数
+    strategyStartpos=0                   # 策略启动日期位置（即前面的数据用于初始化），int值  注意：这个值决定了回测开始时刻 多参数优化直接修改该值
+    all_bar=[]                           # 存放所以bar  
+    short_term_list=[]                   # 存放UIkline生成好的短期指标结果
+    short_term_last_three_index=[]       # 存放最近3个短期指标index 下标 
+    short_term_open_last_three_index=[]  # 存放上一次开仓的最近3个短期指标index 下标 
+    E_LONG        = 14                   # 做多趋势均线天数 
+    A_LOSS_SP     = 0.26                 # 保证金亏损幅度
+    A_FLAOT_PROFIT= 3600                 # 最佳浮盈              
+
+               
     
+    BKPRICE = EMPTY_FLOAT_WH
     # 参数列表，保存了参数的名称
     paramList = ['name',
                  'className',
                  'author',
-                 'vtSymbol']    
+                 'vtSymbol',
+                 'A_LOSS_SP',
+                 'A_FLAOT_PROFIT',
+                 'E_LONG'
+                 ]    
     
     # 变量列表，保存了变量的名称
     varList = ['inited',
@@ -46,26 +69,41 @@ class ShortTermStrategy(CtaTemplate):
         """Constructor"""
         super(ShortTermStrategy, self).__init__(ctaEngine, setting)
         
-        #self.initDays= 
-        
-        self.bg = BarGenerator(self.onBar)
-        self.am = ArrayManager(self.initDays)
-        
         # 注意策略类中的可变对象属性（通常是list和dict等），在策略初始化时需要重新创建，
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
         # 策略类中的这些可变对象属性可以选择不写，全都放在__init__下面，写主要是为了阅读
-        # 策略时方便（更多是个编程习惯的选择）        
+        # 策略时方便（更多是个编程习惯的选择）
+        self.short_term_list                 =[] 
+        self.short_term_last_three_index     =[]
+        self.short_term_open_last_three_index=[]
+        self.all_bar                         =[]   
+        self.BKPRICE                         =EMPTY_FLOAT_WH   
+        self.initDays                        =self.E_LONG  
+        self.MAXCLOSE_AFTER_OPEN             =EMPTY_FLOAT_WH #建仓后close的最大值
+        self.strategyStartpos                =0       
+        
+        self.bg = BarGenerator(self.onBar)
+        self.am = ArrayManager(self.initDays)  
         
     #----------------------------------------------------------------------
     def onInit(self):
-        """初始化策略（必须由用户继承实现）"""
-        
+        """初始化策略（必须由用户继承实现）"""        
         self.writeCtaLog(u'短期市场结构策略初始化')
         
-        initData = self.loadBar(self.initDays)
+        index_settings = self.load_Index_Setting()
+        if len(index_settings)==0 :
+            print("检查F:\uiKLine\json\uiKLine_index.json路径是否正确")
+            return
+        for setting in index_settings:
+            self.short_term_list = setting[u'SHORT_TERM_INDEX']     
+        if len(self.short_term_list) == 0:
+            print("short term数据为空")
+            return
+        
+        initData = self.loadBar(self.initDays)        
         for bar in initData:
-            self.onBar(bar)
             self.ctaEngine.updateDailyClose(bar.datetime, bar.close)
+            self.onBar(bar)
         self.putEvent()
         
     #----------------------------------------------------------------------
@@ -88,22 +126,92 @@ class ShortTermStrategy(CtaTemplate):
     #----------------------------------------------------------------------
     def onBar(self, bar):
         """收到Bar推送（必须由用户继承实现）"""
+        self.all_bar.append(bar)      
         am = self.am        
         am.updateBar(bar)
         if not am.inited:
+            return      
+        
+        # 更新最近三次短期列表的值 低1 高2 低1-->做多买入 /  高2 低1 高2-->(做多卖平 or 做空卖出)
+        if len(self.short_term_last_three_index) < 3 :
+            if self.short_term_list[len(self.all_bar)-1] != 0 :
+                self.short_term_last_three_index.append(len(self.all_bar)-1)
+            self.putEvent()
             return
-                           
-        #-------------------------买开条件-----------------------------------------------
-        pass        
-        #-------------------------卖平条件-----------------------------------------------  
+        else:
+            if self.short_term_list[len(self.all_bar)-1] != 0 :
+                del self.short_term_last_three_index[0]
+                self.short_term_last_three_index.append(len(self.all_bar)-1)                          
+
+        if len(self.all_bar) < self.strategyStartpos :
+            self.putEvent()            
+            return
+        #-------------------------做多买开条件-----------------------------------------------
+        
+        # 条件1：短期市场结构是否满足要求 满足为TRUE 不满足为FALSE
+        BK_Condition_1 = False 
+        # 首先：满足做多的基本要求形态-->低1 高2 低1
+        if  self.short_term_list[self.short_term_last_three_index[0]] == 1 and \
+            self.short_term_list[self.short_term_last_three_index[1]] == 2 and \
+            self.short_term_list[self.short_term_last_three_index[2]] == 1  :
+            # 其次：低点是上升的形态 高点高于两边的低点
+            if  (self.all_bar[self.short_term_last_three_index[0]].low  < self.all_bar[self.short_term_last_three_index[2]].low) and \
+                (self.all_bar[self.short_term_last_three_index[1]].high > self.all_bar[self.short_term_last_three_index[2]].low) and \
+                (self.all_bar[self.short_term_last_three_index[1]].high > self.all_bar[self.short_term_last_three_index[0]].low): 
+                # 然后: close大于高点
+                if self.all_bar[self.short_term_last_three_index[1]].high < bar.close:
+                    # 最后： 如果指标没有被使用过
+                    if  cmp(self.short_term_open_last_three_index , self.short_term_last_three_index) != 0:
+                        BK_Condition_1 = True     
+                        
+        # 条件2：考察趋势
+        BK_Condition_2 = False   
+        A_ma  = am.sma(self.E_LONG,array=True)  
+        if  A_ma[-1] < bar.close:
+            # close大于趋势线
+            BK_Condition_2 = True
+            
+        #-------------------------做多卖平条件-----------------------------------------------  
+        
+        #条件1：保证金亏损幅度         
+        SP_Condition_1  = False            
+        if self.pos == 1:
+            A_PRICE_SP              = self.BKPRICE*self.A_WEIGHT*self.A_BZJ      #{最近买开价位总费用} 
+            SP_Condition_1          = (self.BKPRICE-bar.close)*self.A_WEIGHT > (A_PRICE_SP*self.A_LOSS_SP)    
+        
+        #条件2：最佳浮盈  
+        SP_Condition_2  = False   
+        if self.pos == 1:
+            SP_Condition_2          = (bar.close-self.BKPRICE)*self.A_WEIGHT >= self.A_FLAOT_PROFIT  
+            
+        #条件3：卖空形态  
+        SP_Condition_3  = False   
+        if self.pos == 1:
+            # 首先：满足做多卖平的基本要求形态-->高2 低1 高2
+            if  self.short_term_list[self.short_term_last_three_index[0]] == 2 and \
+                self.short_term_list[self.short_term_last_three_index[1]] == 1 and \
+                self.short_term_list[self.short_term_last_three_index[2]] == 2  :
+                # 其次：低点是上升的形态 高点高于两边的低点
+                if  (self.all_bar[self.short_term_last_three_index[0]].high > self.all_bar[self.short_term_last_three_index[2]].high) and \
+                    (self.all_bar[self.short_term_last_three_index[1]].low  < self.all_bar[self.short_term_last_three_index[2]].high) and \
+                    (self.all_bar[self.short_term_last_three_index[1]].low  < self.all_bar[self.short_term_last_three_index[0]].high): 
+                    # 然后: close小于低点
+                    if self.all_bar[self.short_term_last_three_index[1]].low > bar.close:   
+                        SP_Condition_3  = True   
+        
+        #-------------------------做空卖开条件-----------------------------------------------
         pass
-        #-------------------------做多条件-----------------------------------------------
-        pass
-        #-------------------------做空条件-----------------------------------------------
+        #-------------------------做空买平条件-----------------------------------------------
         pass
         #-------------------------执行交易---------------------------------------------------
- 
-                
+        if BK_Condition_1  and BK_Condition_2 and self.pos == 0: 
+            self.buy(bar.close, 1)
+            self.short_term_open_last_three_index  = []
+            self.short_term_open_last_three_index  = copy.deepcopy(self.short_term_last_three_index)
+        if (SP_Condition_1 or SP_Condition_2 or SP_Condition_3) and self.pos == 1:
+            self.sell(bar.close, 1)        
+    
+               
         # 发出状态更新事件
         self.putEvent()
         
@@ -116,7 +224,24 @@ class ShortTermStrategy(CtaTemplate):
     def onTrade(self, trade):
         """收到成交推送（必须由用户继承实现）"""
         # 对于无需做细粒度委托控制的策略，可以忽略onOrder  
+        
+        if trade.direction == DIRECTION_LONG and trade.offset == OFFSET_OPEN  :    #做多买开
+            self.BKPRICE = trade.price
+        if trade.direction == DIRECTION_SHORT and trade.offset == OFFSET_CLOSE:    #做多卖平
+            self.BKPRICE = EMPTY_FLOAT_WH     
     #----------------------------------------------------------------------
     def onStopOrder(self, so):
         """停止单推送"""
         pass    
+    #----------------------------------------------------------------------
+    def load_Index_Setting(self):
+        """把相关指标从json文件读取"""
+        try:
+            with open(u'F:\\uiKLine\\json\\uiKLine_index.json') as f:
+                index_settings= json.load(f)
+                f.close()      
+        except:
+            print ("读取失败，检查F:\\uiKLine\\json\\uiKLine_index.json路径是否正确")
+            return {}
+        return index_settings
+    

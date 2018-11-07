@@ -296,9 +296,16 @@ class BacktestingEngine(object):
         self.bar = bar
         self.dt  = bar.datetime
         
+        '''源代码
         self.crossLimitOrder()      # 先撮合限价单
         self.crossStopOrder()       # 再撮合停止单
         self.strategy.onBar(bar)    # 推送K线到策略中
+        '''
+        
+        '''任建军修改'''
+        self.strategy.onBar(bar)    # 推送K线到策略中
+        self.crossLimitOrder()      # 先撮合限价单
+        self.crossStopOrder()       # 再撮合停止单
         
         self.updateDailyClose(bar.datetime, bar.close)
     
@@ -912,7 +919,7 @@ class BacktestingEngine(object):
         if d['posList'][-1] == 0:
             del d['posList'][-1]
         tradeTimeIndex = [item.strftime("%m/%d %H:%M:%S") for item in d['tradeTimeList']]
-        if len(tradeTimeIndex)==0:
+        if len(tradeTimeIndex)==0 or np.int(len(tradeTimeIndex)/10) == 0:
             return
         xindex = np.arange(0, len(tradeTimeIndex), np.int(len(tradeTimeIndex)/10))
         tradeTimeIndex = map(lambda i: tradeTimeIndex[i], xindex)
@@ -1759,7 +1766,7 @@ class BacktestingEngine(object):
         tb1.add_row([u'最大持续盈利次数',"%(xxx)s"%{'xxx':(max(d['winloselist']))}])        
         tb1.add_row([u'最大持续盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(max(d['winloselist']))-max(d['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(max(d['winloselist']))].strftime("%Y-%m-%d")}])    
         tb1.add_row([u'最大持续亏损次数',"%(xxx)s"%{'xxx':(abs(min(d['winloselist'])))}])            
-        tb1.add_row([u'最大持续盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(min(d['winloselist']))-abs(min(d['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(min(d['winloselist']))].strftime("%Y-%m-%d")}])       
+        tb1.add_row([u'最大持续亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(min(d['winloselist']))-abs(min(d['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(min(d['winloselist']))].strftime("%Y-%m-%d")}])       
         tb1.add_row(['  ','  '])
         
 
@@ -1951,6 +1958,11 @@ class OptimizationSetting(object):
         
         self.optimizeTarget = ''        # 优化目标字段
         
+        self.greater_than=[]        #[['x','y'],['a','b']]  'x' > 'y' , 'a' > 'b'
+        self.less_than=[]           #[['x','y'],['a','b']]  'x' < 'y' , 'a' < 'b'
+        self.greater_than_equal=[]  #[['x','y'],['a','b']]  'x' >= 'y' , 'a' >= 'b'
+        self.less_than_equal=[]     #[['x','y'],['a','b']]  'x' <= 'y' , 'a' <= 'b'
+        
     #----------------------------------------------------------------------
     def addParameter(self, name, start, end=None, step=None):
         """增加优化参数"""
@@ -1989,9 +2001,62 @@ class OptimizationSetting(object):
         settingList = []
         for p in productList:
             d = dict(zip(nameList, p))
+            
+            ##### 任建军添加20181105#####################
+            filter_pass=True
+            for filter in self.greater_than:
+                if not(d[filter[0]] > d[filter[1]]) :
+                    filter_pass=False
+                    break
+            if filter_pass==False:
+                continue
+            
+            filter_pass=True
+            for filter in self.less_than:
+                if not(d[filter[0]] < d[filter[1]]) :
+                    filter_pass=False
+                    break
+            if filter_pass==False:
+                continue        
+            
+            filter_pass=True
+            for filter in self.greater_than_equal:
+                if not(d[filter[0]] >= d[filter[1]]) :
+                    filter_pass=False
+                    break
+            if filter_pass==False:
+                continue   
+            
+            filter_pass=True
+            for filter in self.less_than_equal:
+                if not(d[filter[0]] <= d[filter[1]]) :
+                    filter_pass=False
+                    break
+            if filter_pass==False:
+                continue   
+            ##### 任建军添加20181105#####################
+            
             settingList.append(d)
     
         return settingList
+    #----------------------------------------------------------------------
+    def addfilter_greater_than(self, lists):
+        """参数的大于关系，会成倍的优化运行效率"""
+        self.greater_than =  lists
+        pass
+    def addfilter_less_than(self,lists):
+        """参数的小于等于关系，会成倍的优化运行效率"""
+        self.less_than =  lists
+        pass
+    def addfilter_greater_than_equal(self,lists):
+        """参数的大于等于关系，会成倍的优化运行效率"""
+        self.greater_than_equal =  lists
+        pass
+    def addfilter_less_than_equal(self,lists):
+        """参数的小于等于关系，会成倍的优化运行效率"""
+        self.less_than_equal =  lists
+        pass
+        
     
     #----------------------------------------------------------------------
     def setOptimizeTarget(self, target):

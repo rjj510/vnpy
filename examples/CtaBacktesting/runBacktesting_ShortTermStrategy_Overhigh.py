@@ -1,7 +1,12 @@
 # encoding: UTF-8
-
 """
 展示如何执行策略回测。
+BUY 买入
+OVERWEIGHT 加仓
+HOLD 持有
+UNDERWEIGHT 减仓
+SELL 卖出
+MEAN 平均值
 """
 
 from __future__ import division
@@ -10,11 +15,10 @@ import os
 
 from vnpy.trader.app.ctaStrategy.ctaBacktesting import BacktestingEngine, MINUTE_DB_NAME,DAILY_DB_NAME
 
-import vnpy.trader.app.ctaStrategy.strategy.strategyShortTerm as STS
+import vnpy.trader.app.ctaStrategy.strategy.strategyShortTerm_Overhigh as STS
 #----------------------------------------------------------------------
 def calculateDailyResult_init(long_or_short):
     """主函数，供其他python程序进行模块化程序初始化调用"""
-    #from vnpy.trader.app.ctaStrategy.strategy.strategyShortTerm import ShortTermStrategy
     reload(STS)
     # 创建回测引擎
     engine = BacktestingEngine()
@@ -31,7 +35,7 @@ def calculateDailyResult_init(long_or_short):
       
     # 在引擎中创建策略对象
     d = {'LongOrShort':long_or_short}
-    engine.initStrategy(STS.ShortTermStrategy, d)
+    engine.initStrategy(STS.ShortTermStrategy_Overhigh, d)
       
     return engine
 
@@ -54,7 +58,7 @@ def calculateDailyResult_to_CSV(engine,date,pos,csvfile):
   
     # 显示回测结果  用于文华的ctrl+G的快捷键功能
     os.system('cls')
-    print(u"RB9999 短期结构交易系统")
+    print(u"RB9999 短期结构加仓交易系统")
     print('start date:'+date)
     engine.showBacktestingResultLikeWH(df)
 #----------------------------------------------------------------------
@@ -73,16 +77,14 @@ def get_strategy_SK_E_LONG(engine):
     return engine.strategy.SK_E_LONG    
     
 if __name__ == '__main__' :
-    #or  __name__ == 'runBacktesting_WH':
-    #from vnpy.trader.app.ctaStrategy.strategy.strategyShortTerm import ShortTermStrategy
     reload(STS)
     # 创建回测引擎
     engine = BacktestingEngine()
     # 设置引擎的回测模式为K线
     engine.setBacktestingMode(engine.BAR_MODE)
 
-    # 设置回测用的数据起始日期，注意：strategyShortTerm策略该值设置为第一天计算的日期，
-    # 需要根据日期直接修改strategyShortTerm.py中class ShortTermStrategy的strategyStartpos值
+    # 设置回测用的数据起始日期，注意：ShortTermStrategy_Overhigh策略该值设置为第一天计算的日期，
+    # 需要根据日期直接修改strategyShortTerm_Overhigh.py中class ShortTermStrategy_Overhigh的strategyStartpos值
     engine.setStartDate('20090327')
     
     # 设置产品相关参数
@@ -97,7 +99,7 @@ if __name__ == '__main__' :
     
     # 在引擎中创建策略对象
     d = {}
-    engine.initStrategy(STS.ShortTermStrategy, d)
+    engine.initStrategy(STS.ShortTermStrategy_Overhigh, d)
     # 开始跑回测
     engine.runBacktesting()
     

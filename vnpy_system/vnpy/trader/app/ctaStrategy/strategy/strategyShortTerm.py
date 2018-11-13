@@ -36,6 +36,7 @@ import copy
 
 EMPTY_INT_WH = -1
 EMPTY_FLOAT_WH = -1.0
+EMPTY_DATE_WH = ''
 ########################################################################
 class ShortTermStrategy(CtaTemplate):
     """短期市场结构策略"""
@@ -54,16 +55,17 @@ class ShortTermStrategy(CtaTemplate):
     # 多参数优化时根据F:\uiKLine\json\uiKLine_startpara中的STARTPOS值直接修改该值
     # 直接回测时候也需要直接修改该值
     # 同时修改__init__中的这个值
-    strategyStartpos=1890                   
+    strategyStartpos=1890              
+    strategyEndpos=2340                  
     # 策略 做多策略还是做空策略，BOOL值  True=Long False=Short
     # 注意：多参数优化时直接修改该值
     # 直接回测时候也需要直接修改该值
     LongOrShort     =True                
     
     all_bar=[]                           # 存放所以bar  
-    short_term_list=[]                   # 存放UIkline生成好的短期指标结果
-    short_term_last_three_index=[]       # 存放最近3个短期指标index 下标 
-    short_term_open_last_three_index=[]  # 存放上一次开仓的最近3个短期指标index 下标 
+    #short_term_list=[]                   # 存放UIkline生成好的短期指标结果
+    #short_term_last_three_index=[]       # 存放最近3个短期指标index 下标 
+    #short_term_open_last_three_index=[]  # 存放上一次开仓的最近3个短期指标index 下标 
     
     ###--20090327优化参数(strategyStartpos = 0000 20090327)开多-----#####
     #E_LONG        = 14                 # 做多趋势均线天数 # 
@@ -72,9 +74,16 @@ class ShortTermStrategy(CtaTemplate):
     ###---------------------------------------------------#####
    
     ####--20170103优化参数(strategyStartpos = 1890 20170103)开多------#####            
-    E_LONG        = 13                 # 做多趋势均线天数     #
-    A_LOSS_SP     = 0.19               # 保证金亏损幅度       #
-    A_FLAOT_PROFIT= 2950               # 最佳浮盈            # 
+    E_LONG_FIRST          = 15                 # 做多趋势均线天数     #
+    A_LOSS_SP_FIRST       = 0.21               # 保证金亏损幅度     #
+    A_FLAOT_PROFIT_FIRST  = 2950               # 最佳浮盈          # 
+    
+    ####--20170103优化参数(strategyStartpos = 1890 20170103)开多------#####       
+    A_LOSS_SP_ALL       = 0.16               # 保证金亏损幅度     #
+    A_FLAOT_PROFIT_ALL  = 1900               # 最佳浮盈           # 
+    A_MIN_UP_ALL        = 0.9                # close超过short_term_last_two_high_all_index[1]幅度# 
+    
+    
     ###-----------------------------------------------------#####         
     
     
@@ -97,9 +106,12 @@ class ShortTermStrategy(CtaTemplate):
                  'className',
                  'author',
                  'vtSymbol',
-                 'A_LOSS_SP',
-                 'A_FLAOT_PROFIT',
-                 'E_LONG',
+                 'A_LOSS_SP_FIRST',
+                 'A_FLAOT_PROFIT_FIRST ',
+                 'E_LONG_FIRST',
+                 'A_LOSS_SP_ALL',
+                 'A_FLAOT_PROFIT_ALL',
+                 'A_MIN_UP_ALL',
                  'SK_A_LOSS_SP',
                  'SK_A_FLAOT_PROFIT',
                  'SK_E_LONG',
@@ -123,15 +135,21 @@ class ShortTermStrategy(CtaTemplate):
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
         # 策略类中的这些可变对象属性可以选择不写，全都放在__init__下面，写主要是为了阅读
         # 策略时方便（更多是个编程习惯的选择）
-        self.short_term_list                 =[] 
-        self.short_term_last_three_index     =[]
-        self.short_term_open_last_three_index=[]
+        self.short_term_list_first           =[] 
+        self.short_term_list_all             =[] 
+        self.short_term_last_three_first_index=[]
+        self.short_term_last_two_low_all_index=[]
+        self.short_term_last_two_high_all_index=[]
+        self.short_term_open_last_three_first_index=[]
+        self.short_term_open_last_two_all_index=[]
         self.all_bar                         =[]   
+        self.BK_style                        =EMPTY_INT_WH    # 1-->短期结构第一个生成的高低点  2-->所有的低点 21利用低点 22利用高点
         self.BKPRICE                         =EMPTY_FLOAT_WH   
         self.SKPRICE                         =EMPTY_FLOAT_WH
-        self.initDays                        =self.E_LONG if self.LongOrShort==True else self.SK_E_LONG
+        self.initDays                        =self.E_LONG_FIRST if self.LongOrShort==True else self.SK_E_LONG
         self.MAXCLOSE_AFTER_OPEN             =EMPTY_FLOAT_WH #建仓后close的最大值
         self.strategyStartpos                =1890      
+        self.strategyEndpos                  =2340                
         
         self.bg = BarGenerator(self.onBar)
         self.am = ArrayManager(self.initDays)  
@@ -141,15 +159,26 @@ class ShortTermStrategy(CtaTemplate):
         """初始化策略（必须由用户继承实现）"""        
         self.writeCtaLog(u'短期市场结构策略初始化')
         
-        index_settings = self.load_Index_Setting()
+        index_settings = self.load_First_Index_Setting()
         if len(index_settings)==0 :
-            print("检查F:\uiKLine\json\uiKLine_index.json路径是否正确")
+            print("检查F:\uiKLine\json\uiKLine_first_index.json路径是否正确")
             return
         for setting in index_settings:
-            self.short_term_list = setting[u'SHORT_TERM_INDEX']     
-        if len(self.short_term_list) == 0:
+            self.short_term_list_first = setting[u'SHORT_TERM_INDEX']     
+        if len(self.short_term_list_first) == 0:
             print("short term数据为空")
             return
+        
+        index_settings = self.load_All_Index_Setting()
+        if len(index_settings)==0 :
+            print("检查F:\uiKLine\json\uiKLine_all_index.json路径是否正确")
+            return
+        for setting in index_settings:
+            self.short_term_list_all = setting[u'SHORT_TERM_INDEX']     
+        if len(self.short_term_list_all) == 0:
+            print("short term数据为空")
+            return
+        
         
         initData = self.loadBar(self.initDays)        
         for bar in initData:
@@ -175,49 +204,41 @@ class ShortTermStrategy(CtaTemplate):
         self.bg.updateTick(tick)
         
     #----------------------------------------------------------------------
-    def onBar(self, bar):
-        """收到Bar推送（必须由用户继承实现）"""
-        self.all_bar.append(bar)      
-        am = self.am        
-        am.updateBar(bar)
-        if not am.inited:
-            return      
-        
+    def short_term_first_index(self,bar,am):
+        """利用short term(first)作为策略进行交易"""
         # 更新最近三次短期列表的值 低1 高2 低1-->做多买入 /  高2 低1 高2-->(做多卖平 or 做空卖出)
-        if len(self.short_term_last_three_index) < 3 :
-            if self.short_term_list[len(self.all_bar)-1] != 0 :
-                self.short_term_last_three_index.append(len(self.all_bar)-1)
-            self.putEvent()
+        if len(self.short_term_last_three_first_index) < 3 :
+            if self.short_term_list_first[len(self.all_bar)-1] != 0 :
+                self.short_term_last_three_first_index.append(len(self.all_bar)-1)
             return
         else:
-            if self.short_term_list[len(self.all_bar)-1] != 0 :
-                del self.short_term_last_three_index[0]
-                self.short_term_last_three_index.append(len(self.all_bar)-1)                          
-
-        if len(self.all_bar) < self.strategyStartpos :
-            self.putEvent()            
+            if self.short_term_list_first[len(self.all_bar)-1] != 0 :
+                del self.short_term_last_three_first_index[0]
+                self.short_term_last_three_first_index.append(len(self.all_bar)-1)                          
+                
+        if len(self.all_bar) < self.strategyStartpos :        
             return
-        
         #------------------------ 1 、 做多买开条件-----------------------------------------------        
         # 条件1：短期市场结构是否满足要求 满足为TRUE 不满足为FALSE
         BK_Condition_1 = False 
         # 首先：满足做多的基本要求形态-->低1 高2 低1
-        if  self.short_term_list[self.short_term_last_three_index[0]] == 1 and \
-            self.short_term_list[self.short_term_last_three_index[1]] == 2 and \
-            self.short_term_list[self.short_term_last_three_index[2]] == 1  :
-            # 其次：低点是上升的形态 高点高于两边的低点
-            if  (self.all_bar[self.short_term_last_three_index[0]].low  < self.all_bar[self.short_term_last_three_index[2]].low) and \
-                (self.all_bar[self.short_term_last_three_index[1]].high > self.all_bar[self.short_term_last_three_index[2]].low) and \
-                (self.all_bar[self.short_term_last_three_index[1]].high > self.all_bar[self.short_term_last_three_index[0]].low): 
+        if  self.short_term_list_first[self.short_term_last_three_first_index[0]] == 1 and \
+            self.short_term_list_first[self.short_term_last_three_first_index[1]] == 2 and \
+            self.short_term_list_first[self.short_term_last_three_first_index[2]] == 1  :
+            # 其次：低点是上升的形态 高点高于两边的低点,最后面的低1全部走完（确定一个高、低点需要3个K线）
+            if  (self.all_bar[self.short_term_last_three_first_index[0]].low  < self.all_bar[self.short_term_last_three_first_index[2]].low) and \
+                (self.all_bar[self.short_term_last_three_first_index[1]].high > self.all_bar[self.short_term_last_three_first_index[2]].low) and \
+                (self.all_bar[self.short_term_last_three_first_index[1]].high > self.all_bar[self.short_term_last_three_first_index[0]].low) and \
+                (len(self.all_bar)-1                                          > self.short_term_last_three_first_index[2]) : 
                 # 然后: close大于高点
-                if self.all_bar[self.short_term_last_three_index[1]].high < bar.close:
+                if self.all_bar[self.short_term_last_three_first_index[1]].high < bar.close:
                     # 最后： 如果指标没有被使用过
-                    if  cmp(self.short_term_open_last_three_index , self.short_term_last_three_index) != 0:
+                    if  cmp(self.short_term_open_last_three_first_index , self.short_term_last_three_first_index) != 0:
                         BK_Condition_1 = True     
                         
         # 条件2：考察趋势
         BK_Condition_2 = False   
-        A_ma  = am.sma(self.E_LONG,array=True)  
+        A_ma  = am.sma(self.E_LONG_FIRST,array=True)  
         if  A_ma[-1] < bar.close:
             # close大于趋势线
             BK_Condition_2 = True
@@ -226,41 +247,41 @@ class ShortTermStrategy(CtaTemplate):
         SP_Condition_1  = False            
         if self.pos == 1:
             A_PRICE_SP              = self.BKPRICE*self.A_WEIGHT*self.A_BZJ      #{最近买开价位总费用} 
-            SP_Condition_1          = (self.BKPRICE-bar.close)*self.A_WEIGHT > (A_PRICE_SP*self.A_LOSS_SP)    
+            SP_Condition_1          = (self.BKPRICE-bar.close)*self.A_WEIGHT > (A_PRICE_SP*self.A_LOSS_SP_FIRST)    
         
         #条件2：最佳浮盈  
         SP_Condition_2  = False   
         if self.pos == 1:
-            SP_Condition_2          = (bar.close-self.BKPRICE)*self.A_WEIGHT >= self.A_FLAOT_PROFIT  
+            SP_Condition_2          = (bar.close-self.BKPRICE)*self.A_WEIGHT >= self.A_FLAOT_PROFIT_FIRST   
             
         #条件3：卖空形态  
         SP_Condition_3  = False   
         if self.pos == 1:
             # 首先：满足做空卖开的基本要求形态-->高2 低1 高2
-            if  self.short_term_list[self.short_term_last_three_index[0]] == 2 and \
-                self.short_term_list[self.short_term_last_three_index[1]] == 1 and \
-                self.short_term_list[self.short_term_last_three_index[2]] == 2  :
+            if  self.short_term_list_first[self.short_term_last_three_first_index[0]] == 2 and \
+                self.short_term_list_first[self.short_term_last_three_first_index[1]] == 1 and \
+                self.short_term_list_first[self.short_term_last_three_first_index[2]] == 2  :
                 # 其次：高点是下降的形态 低点高于两边的高点
-                if  (self.all_bar[self.short_term_last_three_index[0]].high > self.all_bar[self.short_term_last_three_index[2]].high) and \
-                    (self.all_bar[self.short_term_last_three_index[1]].low  < self.all_bar[self.short_term_last_three_index[2]].high) and \
-                    (self.all_bar[self.short_term_last_three_index[1]].low  < self.all_bar[self.short_term_last_three_index[0]].high): 
+                if  (self.all_bar[self.short_term_last_three_first_index[0]].high > self.all_bar[self.short_term_last_three_first_index[2]].high) and \
+                    (self.all_bar[self.short_term_last_three_first_index[1]].low  < self.all_bar[self.short_term_last_three_first_index[2]].high) and \
+                    (self.all_bar[self.short_term_last_three_first_index[1]].low  < self.all_bar[self.short_term_last_three_first_index[0]].high): 
                     # 然后: close小于低点
-                    if self.all_bar[self.short_term_last_three_index[1]].low > bar.close:   
+                    if self.all_bar[self.short_term_last_three_first_index[1]].low > bar.close:   
                         SP_Condition_3  = True   
         
         #-------------------------3 、做空卖开条件-----------------------------------------------       
         # 条件1：短期市场结构是否满足要求 满足为TRUE 不满足为FALSE
         SK_Condition_1 = False 
         # 首先：满足做空的基本要求形态-->高2 低1 高2
-        if  self.short_term_list[self.short_term_last_three_index[0]] == 2 and \
-            self.short_term_list[self.short_term_last_three_index[1]] == 1 and \
-            self.short_term_list[self.short_term_last_three_index[2]] == 2  :
+        if  self.short_term_list_first[self.short_term_last_three_first_index[0]] == 2 and \
+            self.short_term_list_first[self.short_term_last_three_first_index[1]] == 1 and \
+            self.short_term_list_first[self.short_term_last_three_first_index[2]] == 2  :
             # 其次：高点是下降的形态 低点高于两边的高点
-            if  (self.all_bar[self.short_term_last_three_index[0]].high > self.all_bar[self.short_term_last_three_index[2]].high) and \
-                (self.all_bar[self.short_term_last_three_index[1]].low  < self.all_bar[self.short_term_last_three_index[2]].high) and \
-                (self.all_bar[self.short_term_last_three_index[1]].low  < self.all_bar[self.short_term_last_three_index[0]].high): 
+            if  (self.all_bar[self.short_term_last_three_first_index[0]].high > self.all_bar[self.short_term_last_three_first_index[2]].high) and \
+                (self.all_bar[self.short_term_last_three_first_index[1]].low  < self.all_bar[self.short_term_last_three_first_index[2]].high) and \
+                (self.all_bar[self.short_term_last_three_first_index[1]].low  < self.all_bar[self.short_term_last_three_first_index[0]].high): 
                 # 然后: close小于低点
-                if self.all_bar[self.short_term_last_three_index[1]].low > bar.close:   
+                if self.all_bar[self.short_term_last_three_first_index[1]].low > bar.close:   
                     SK_Condition_1 = True   
                         
         # 条件2：考察趋势
@@ -285,33 +306,291 @@ class ShortTermStrategy(CtaTemplate):
         BP_Condition_3  = False   
         if self.pos == -1:
             # 首先：满足做多买开的基本要求形态-->低1 高2 低1
-            if  self.short_term_list[self.short_term_last_three_index[0]] == 1 and \
-                self.short_term_list[self.short_term_last_three_index[1]] == 2 and \
-                self.short_term_list[self.short_term_last_three_index[2]] == 1  :
+            if  self.short_term_list_first[self.short_term_last_three_first_index[0]] == 1 and \
+                self.short_term_list_first[self.short_term_last_three_first_index[1]] == 2 and \
+                self.short_term_list_first[self.short_term_last_three_first_index[2]] == 1  :
                 # 其次：低点是上升的形态 高点高于两边的低点
-                if  (self.all_bar[self.short_term_last_three_index[0]].low  < self.all_bar[self.short_term_last_three_index[2]].low) and \
-                    (self.all_bar[self.short_term_last_three_index[1]].high > self.all_bar[self.short_term_last_three_index[2]].low) and \
-                    (self.all_bar[self.short_term_last_three_index[1]].high > self.all_bar[self.short_term_last_three_index[0]].low): 
+                if  (self.all_bar[self.short_term_last_three_first_index[0]].low  < self.all_bar[self.short_term_last_three_first_index[2]].low) and \
+                    (self.all_bar[self.short_term_last_three_first_index[1]].high > self.all_bar[self.short_term_last_three_first_index[2]].low) and \
+                    (self.all_bar[self.short_term_last_three_first_index[1]].high > self.all_bar[self.short_term_last_three_first_index[0]].low): 
                     # 然后: close大于高点
-                    if self.all_bar[self.short_term_last_three_index[1]].high < bar.close:
+                    if self.all_bar[self.short_term_last_three_first_index[1]].high < bar.close:
                         BP_Condition_3 = True
             
-        #-------------------------5 、 执行交易---------------------------------------------------
-        
-        if BK_Condition_1  and BK_Condition_2 and self.pos == 0 and self.LongOrShort==True: 
+        #-------------------------5 、 执行交易---------------------------------------------------        
+        if BK_Condition_1  and BK_Condition_2 and self.pos == 0 and self.BK_style==EMPTY_INT_WH and self.LongOrShort==True: 
             self.buy(bar.close, 1)
-            self.short_term_open_last_three_index  = []
-            self.short_term_open_last_three_index  = copy.deepcopy(self.short_term_last_three_index)
-        if (SP_Condition_1 or SP_Condition_2 or SP_Condition_3) and self.pos == 1:
-            self.sell(bar.close, 1)
-        
+            self.short_term_open_last_three_first_index  = []
+            self.short_term_open_last_three_first_index  = copy.deepcopy(self.short_term_last_three_first_index)
+            self.BK_style                          = 1
+        if (SP_Condition_1 or SP_Condition_2 or SP_Condition_3) and self.pos == 1 and self.BK_style==1:
+            self.sell(bar.close, 1)     
+            self.BK_style                          = EMPTY_INT_WH
         if SK_Condition_1  and SK_Condition_2 and self.pos == 0 and self.LongOrShort==False: 
             self.short(bar.close, 1)
-            self.short_term_open_last_three_index  = []
-            self.short_term_open_last_three_index  = copy.deepcopy(self.short_term_last_three_index)
+            self.short_term_open_last_three_first_index  = []
+            self.short_term_open_last_three_first_index  = copy.deepcopy(self.short_term_last_three_first_index)
+        if (BP_Condition_1 or BP_Condition_2 or BP_Condition_3) and self.pos == -1:
+            self.cover(bar.close, 1)             
+        self.putEvent()
+    #----------------------------------------------------------------------
+    def short_term_all_index(self,bar,am):
+        """
+        利用short term(all)作为策略进行交易  
+        2个连续的低点或者2个连续的高点呈现上升趋势买开
+        2个连续的低点或者2个连续的高点呈现下降趋势卖平
+        """
+        # 更新最近两次短期列表的值 低1 < 低1 -->做多买入 
+        if len(self.short_term_last_two_low_all_index) < 2 :
+            if (self.short_term_list_all[len(self.all_bar)-1] != 0 and self.short_term_list_all[len(self.all_bar)-1] != 2) :
+                self.short_term_last_two_low_all_index.append(len(self.all_bar)-1)
+            return
+        else:
+            if (self.short_term_list_all[len(self.all_bar)-1] != 0 and self.short_term_list_all[len(self.all_bar)-1] != 2) :
+                del self.short_term_last_two_low_all_index[0] 
+                self.short_term_last_two_low_all_index.append(len(self.all_bar)-1)      
+                
+        # 更新最近两次短期列表的值 高2 < 高2 -->做多买入 , 高2 >  高2 -->做多卖平 
+        if len(self.short_term_last_two_high_all_index) < 2 :
+            if (self.short_term_list_all[len(self.all_bar)-1] != 0 and self.short_term_list_all[len(self.all_bar)-1] != 1) :
+                self.short_term_last_two_high_all_index.append(len(self.all_bar)-1)
+            return
+        else:
+            if (self.short_term_list_all[len(self.all_bar)-1] != 0 and self.short_term_list_all[len(self.all_bar)-1] != 1) :
+                del self.short_term_last_two_high_all_index[0] 
+                self.short_term_last_two_high_all_index.append(len(self.all_bar)-1)      
+                
+        if len(self.all_bar) < self.strategyStartpos :          
+            return
+        
+        #------------------------ 1 、 做多买开条件-----------------------------------------------        
+        # 条件1：短期市场结构是否满足要求 满足为TRUE 不满足为FALSE
+        BK_Condition_1 = False 
+        # 首先：满足做多的基本要求形态-->低1 < 低1
+        if  self.short_term_list_all[self.short_term_last_two_low_all_index[0]] == 1 and \
+            self.short_term_list_all[self.short_term_last_two_low_all_index[1]] == 1  :
+            # 其次：低点是上升的形态 后面的低点高于前面的低点 最后面的低1全部走完（确定一个高、低点需要3个K线）
+            if  (self.all_bar[self.short_term_last_two_low_all_index[0]].low  < self.all_bar[self.short_term_last_two_low_all_index[1]].low)  and \
+                (len(self.all_bar)                                          == self.short_term_last_two_low_all_index[1]+2) :    
+                # 最后： 如果指标没有被使用过
+                if  cmp(self.short_term_open_last_two_all_index , self.short_term_last_two_low_all_index) != 0:
+                    BK_Condition_1 = True     
+                    
+        # 条件2：短期市场结构是否满足要求 满足为TRUE 不满足为FALSE
+        BK_Condition_2 = False 
+        # 首先：满足做多的基本要求形态-->高2  <  高2
+        if  self.short_term_list_all[self.short_term_last_two_high_all_index[0]] == 2 and \
+            self.short_term_list_all[self.short_term_last_two_high_all_index[1]] == 2  :
+            # 其次：高点是上升的形态 后面的高点高于前面的高点 最后面的高2全部走完（确定一个高、低点需要3个K线）
+            if  (self.all_bar[self.short_term_last_two_high_all_index[0]].high  < self.all_bar[self.short_term_last_two_high_all_index[1]].high)  and \
+                (len(self.all_bar)                                          >= self.short_term_last_two_high_all_index[1]+2) :
+                # 然后：当日的close高于第二个高点的最高值
+                if bar.close > self.all_bar[self.short_term_last_two_high_all_index[1]].high*(1+self.A_MIN_UP_ALL/100.0):
+                    # 最后： 如果指标没有被使用过
+                    if  cmp(self.short_term_open_last_two_all_index , self.short_term_last_two_high_all_index) != 0:
+                        BK_Condition_2 = True                             
+        #--------------------------2 、做多卖平条件-----------------------------------------------          
+        #条件1：保证金亏损幅度         
+        SP_Condition_1  = False            
+        if self.pos == 1:
+            A_PRICE_SP              = self.BKPRICE*self.A_WEIGHT*self.A_BZJ      #{最近买开价位总费用} 
+            SP_Condition_1          = (self.BKPRICE-bar.close)*self.A_WEIGHT > (A_PRICE_SP*self.A_LOSS_SP_ALL)    
+        
+        #条件2：最佳浮盈  
+        SP_Condition_2  = False   
+        if self.pos == 1:
+            SP_Condition_2          = (bar.close-self.BKPRICE)*self.A_WEIGHT >= self.A_FLAOT_PROFIT_ALL  
+            
+        #条件3：closed低于用于开仓的第二个低点日的low值  
+        SP_Condition_3  = False   
+        if self.pos == 1 and self.BK_style==21:
+            SP_Condition_3          = bar.close < self.all_bar[self.short_term_open_last_two_all_index[1]].low   
+            
+        #条件4：满足做多卖平的形态  
+        SP_Condition_4  = False   
+        if self.pos == 1:
+            # 首先：满足做多卖平的基本要求形态-->高2 > 高2
+            if  self.short_term_list_all[self.short_term_last_two_high_all_index[0]] == 2 and \
+                self.short_term_list_all[self.short_term_last_two_high_all_index[1]] == 2 and \
+                self.all_bar[self.short_term_last_two_high_all_index[1]].high < self.all_bar[self.short_term_last_two_high_all_index[0]].high  :
+                #其次 ：用来进行判断的第二个高点，要发生在开仓以后
+                if self.short_term_last_two_high_all_index[1] > self.short_term_open_last_two_all_index[1]+1: 
+                    # 最终 ：最后面的高2全部走完（确定一个高、低点需要3个K线）
+                    if (len(self.all_bar) == self.short_term_last_two_high_all_index[1]+2) : 
+                        SP_Condition_4 =True
+            
+        #条件5：closed低于用于开仓的第二个低点日的high值  
+        SP_Condition_5  = False   
+        if self.pos == 1 and self.BK_style==22:
+            SP_Condition_5          = bar.close < self.all_bar[self.short_term_open_last_two_all_index[0]].high                       
+            
+        #-------------------------5 、 执行交易---------------------------------------------------        
+        if BK_Condition_1 and self.pos == 0 and self.BK_style==EMPTY_INT_WH and self.LongOrShort==True: 
+            self.buy(bar.close, 1)
+            self.short_term_open_last_two_all_index  = []
+            self.short_term_open_last_two_all_index  = copy.deepcopy(self.short_term_last_two_low_all_index)
+            self.BK_style                          = 21
+        elif BK_Condition_2 and self.pos == 0  and self.BK_style==EMPTY_INT_WH and self.LongOrShort==True: 
+            self.buy(bar.close, 1)
+            self.short_term_open_last_two_all_index  = []
+            self.short_term_open_last_two_all_index  = copy.deepcopy(self.short_term_last_two_high_all_index)
+            self.BK_style                          = 22
+        if (SP_Condition_1 or SP_Condition_2 or SP_Condition_3) and self.pos == 1 and self.BK_style==21:
+            self.sell(bar.close, 1)     
+            self.BK_style                          = EMPTY_INT_WH  
+        elif (SP_Condition_1 or SP_Condition_2 or SP_Condition_5) and self.pos == 1 and self.BK_style==22:
+            self.sell(bar.close, 1)     
+            self.BK_style                          = EMPTY_INT_WH            
+        self.putEvent()
+ 
+    
+    #----------------------------------------------------------------------    
+    def onBar(self, bar):
+        """收到Bar推送（必须由用户继承实现）"""
+        self.all_bar.append(bar)      
+        am = self.am        
+        am.updateBar(bar)
+        if not am.inited:
+            return      
+        
+        if len(self.all_bar) > self.strategyEndpos :      
+            if self.pos > 0:
+                self.sell(bar.close, self.pos)
+                self.putEvent()              
+            if self.pos < 0:
+                self.cover(bar.close, abs(self.pos)) 
+                self.putEvent()              
+            return
+        
+        self.short_term_all_index(bar,am)
+        '''
+        # 更新最近三次短期列表的值 低1 高2 低1-->做多买入 /  高2 低1 高2-->(做多卖平 or 做空卖出)
+        if len(self.short_term_last_three_first_index) < 3 :
+            if self.short_term_list_first[len(self.all_bar)-1] != 0 :
+                self.short_term_last_three_first_index.append(len(self.all_bar)-1)
+            self.putEvent()
+            return
+        else:
+            if self.short_term_list_first[len(self.all_bar)-1] != 0 :
+                del self.short_term_last_three_first_index[0]
+                self.short_term_last_three_first_index.append(len(self.all_bar)-1)                          
+
+        if len(self.all_bar) < self.strategyStartpos :
+            self.putEvent()            
+            return
+        
+        #------------------------ 1 、 做多买开条件-----------------------------------------------        
+        # 条件1：短期市场结构是否满足要求 满足为TRUE 不满足为FALSE
+        BK_Condition_1 = False 
+        # 首先：满足做多的基本要求形态-->低1 高2 低1
+        if  self.short_term_list_first[self.short_term_last_three_first_index[0]] == 1 and \
+            self.short_term_list_first[self.short_term_last_three_first_index[1]] == 2 and \
+            self.short_term_list_first[self.short_term_last_three_first_index[2]] == 1  :
+            # 其次：低点是上升的形态 高点高于两边的低点
+            if  (self.all_bar[self.short_term_last_three_first_index[0]].low  < self.all_bar[self.short_term_last_three_first_index[2]].low) and \
+                (self.all_bar[self.short_term_last_three_first_index[1]].high > self.all_bar[self.short_term_last_three_first_index[2]].low) and \
+                (self.all_bar[self.short_term_last_three_first_index[1]].high > self.all_bar[self.short_term_last_three_first_index[0]].low): 
+                # 然后: close大于高点
+                if self.all_bar[self.short_term_last_three_first_index[1]].high < bar.close:
+                    # 最后： 如果指标没有被使用过
+                    if  cmp(self.short_term_open_last_three_first_index , self.short_term_last_three_first_index) != 0:
+                        BK_Condition_1 = True     
+                        
+        # 条件2：考察趋势
+        BK_Condition_2 = False   
+        A_ma  = am.sma(self.E_LONG,array=True)  
+        if  A_ma[-1] < bar.close:
+            # close大于趋势线
+            BK_Condition_2 = True
+        #--------------------------2 、做多卖平条件-----------------------------------------------          
+        #条件1：保证金亏损幅度         
+        SP_Condition_1  = False            
+        if self.pos == 1:
+            A_PRICE_SP              = self.BKPRICE*self.A_WEIGHT*self.A_BZJ      #{最近买开价位总费用} 
+            SP_Condition_1          = (self.BKPRICE-bar.close)*self.A_WEIGHT > (A_PRICE_SP*self.A_LOSS_SP)    
+        
+        #条件2：最佳浮盈  
+        SP_Condition_2  = False   
+        if self.pos == 1:
+            SP_Condition_2          = (bar.close-self.BKPRICE)*self.A_WEIGHT >= self.A_FLAOT_PROFIT  
+            
+        #条件3：卖空形态  
+        SP_Condition_3  = False   
+        if self.pos == 1:
+            # 首先：满足做空卖开的基本要求形态-->高2 低1 高2
+            if  self.short_term_list_first[self.short_term_last_three_first_index[0]] == 2 and \
+                self.short_term_list_first[self.short_term_last_three_first_index[1]] == 1 and \
+                self.short_term_list_first[self.short_term_last_three_first_index[2]] == 2  :
+                # 其次：高点是下降的形态 低点高于两边的高点
+                if  (self.all_bar[self.short_term_last_three_first_index[0]].high > self.all_bar[self.short_term_last_three_first_index[2]].high) and \
+                    (self.all_bar[self.short_term_last_three_first_index[1]].low  < self.all_bar[self.short_term_last_three_first_index[2]].high) and \
+                    (self.all_bar[self.short_term_last_three_first_index[1]].low  < self.all_bar[self.short_term_last_three_first_index[0]].high): 
+                    # 然后: close小于低点
+                    if self.all_bar[self.short_term_last_three_first_index[1]].low > bar.close:   
+                        SP_Condition_3  = True   
+        
+        #-------------------------3 、做空卖开条件-----------------------------------------------       
+        # 条件1：短期市场结构是否满足要求 满足为TRUE 不满足为FALSE
+        SK_Condition_1 = False 
+        # 首先：满足做空的基本要求形态-->高2 低1 高2
+        if  self.short_term_list_first[self.short_term_last_three_first_index[0]] == 2 and \
+            self.short_term_list_first[self.short_term_last_three_first_index[1]] == 1 and \
+            self.short_term_list_first[self.short_term_last_three_first_index[2]] == 2  :
+            # 其次：高点是下降的形态 低点高于两边的高点
+            if  (self.all_bar[self.short_term_last_three_first_index[0]].high > self.all_bar[self.short_term_last_three_first_index[2]].high) and \
+                (self.all_bar[self.short_term_last_three_first_index[1]].low  < self.all_bar[self.short_term_last_three_first_index[2]].high) and \
+                (self.all_bar[self.short_term_last_three_first_index[1]].low  < self.all_bar[self.short_term_last_three_first_index[0]].high): 
+                # 然后: close小于低点
+                if self.all_bar[self.short_term_last_three_first_index[1]].low > bar.close:   
+                    SK_Condition_1 = True   
+                        
+        # 条件2：考察趋势
+        SK_Condition_2 = False   
+        A_ma  = am.sma(self.SK_E_LONG,array=True)  
+        if  A_ma[-1] > bar.close:
+            # close大于趋势线
+            SK_Condition_2 = True                         
+        #-------------------------4 、 做空买平条件-----------------------------------------------         
+        #条件1：保证金亏损幅度         
+        BP_Condition_1  = False            
+        if self.pos == -1:
+            A_PRICE_SP              = self.BKPRICE*self.A_WEIGHT*self.A_BZJ      #{最近买开价位总费用} 
+            BP_Condition_1          = (bar.close-self.BKPRICE)*self.A_WEIGHT > (A_PRICE_SP*self.SK_A_LOSS_SP)    
+        
+        #条件2：最佳浮盈  
+        BP_Condition_2  = False   
+        if self.pos == -1:
+            BP_Condition_2          = (self.BKPRICE-bar.close)*self.A_WEIGHT >= self.SK_A_FLAOT_PROFIT  
+            
+        #条件3：买多形态  
+        BP_Condition_3  = False   
+        if self.pos == -1:
+            # 首先：满足做多买开的基本要求形态-->低1 高2 低1
+            if  self.short_term_list_first[self.short_term_last_three_first_index[0]] == 1 and \
+                self.short_term_list_first[self.short_term_last_three_first_index[1]] == 2 and \
+                self.short_term_list_first[self.short_term_last_three_first_index[2]] == 1  :
+                # 其次：低点是上升的形态 高点高于两边的低点
+                if  (self.all_bar[self.short_term_last_three_first_index[0]].low  < self.all_bar[self.short_term_last_three_first_index[2]].low) and \
+                    (self.all_bar[self.short_term_last_three_first_index[1]].high > self.all_bar[self.short_term_last_three_first_index[2]].low) and \
+                    (self.all_bar[self.short_term_last_three_first_index[1]].high > self.all_bar[self.short_term_last_three_first_index[0]].low): 
+                    # 然后: close大于高点
+                    if self.all_bar[self.short_term_last_three_first_index[1]].high < bar.close:
+                        BP_Condition_3 = True
+            
+        #-------------------------5 、 执行交易---------------------------------------------------        
+        if BK_Condition_1  and BK_Condition_2 and self.pos == 0 and self.LongOrShort==True: 
+            self.buy(bar.close, 1)
+            self.short_term_open_last_three_first_index  = []                 
+            self.short_term_open_last_three_first_index  = copy.deepcopy(self.short_term_last_three_first_index)
+        if (SP_Condition_1 or SP_Condition_2 or SP_Condition_3) and self.pos == 1:
+            self.sell(bar.close, 1)        
+        if SK_Condition_1  and SK_Condition_2 and self.pos == 0 and self.LongOrShort==False: 
+            self.short(bar.close, 1)
+            self.short_term_open_last_three_first_index  = []
+            self.short_term_open_last_three_first_index  = copy.deepcopy(self.short_term_last_three_first_index)
         if (BP_Condition_1 or BP_Condition_2 or BP_Condition_3) and self.pos == -1:
             self.cover(bar.close, 1) 
-           
+        '''   
                
         # 发出状态更新事件
         self.putEvent()
@@ -326,27 +605,39 @@ class ShortTermStrategy(CtaTemplate):
         """收到成交推送（必须由用户继承实现）"""
         # 对于无需做细粒度委托控制的策略，可以忽略onOrder         
         if trade.direction == DIRECTION_LONG and trade.offset == OFFSET_OPEN  :    #做多买开
+            print('BUY :',trade.tradeTime,trade.price )
             self.BKPRICE = trade.price
         if trade.direction == DIRECTION_SHORT and trade.offset == OFFSET_CLOSE:    #做多卖平
-            self.BKPRICE = EMPTY_FLOAT_WH     
+            print('SELL:',trade.tradeTime,trade.price,(trade.price- self.BKPRICE)*self.A_WEIGHT )
+            self.BKPRICE = EMPTY_FLOAT_WH   
             
         if trade.direction == DIRECTION_SHORT and trade.offset == OFFSET_OPEN  :    #做空卖开
-            self.BKPRICE = trade.price
+            self.SKPRICE = trade.price
         if trade.direction == DIRECTION_LONG and trade.offset == OFFSET_CLOSE:    #做空买平
-            self.BKPRICE = EMPTY_FLOAT_WH     
+            self.SKPRICE = EMPTY_FLOAT_WH     
     #----------------------------------------------------------------------
     def onStopOrder(self, so):
         """停止单推送"""
         pass    
     #----------------------------------------------------------------------
-    def load_Index_Setting(self):
+    def load_First_Index_Setting(self):
         """把相关指标从json文件读取"""
         try:
-            with open(u'F:\\uiKLine\\json\\uiKLine_index.json') as f:
+            with open(u'F:\\uiKLine\\json\\uiKLine_first_index.json') as f:
                 index_settings= json.load(f)
                 f.close()      
         except:
-            print ("读取失败，检查F:\\uiKLine\\json\\uiKLine_index.json路径是否正确")
+            print ("读取失败，检查F:\\uiKLine\\json\\uiKLine_first_index.json路径是否正确")
             return {}
         return index_settings
     
+    def load_All_Index_Setting(self):
+        """把相关指标从json文件读取"""
+        try:
+            with open(u'F:\\uiKLine\\json\\uiKLine_all_index.json') as f:
+                index_settings= json.load(f)
+                f.close()      
+        except:
+            print ("读取失败，检查F:\\uiKLine\\json\\uiKLine_all_index.json路径是否正确")
+            return {}
+        return index_settings    

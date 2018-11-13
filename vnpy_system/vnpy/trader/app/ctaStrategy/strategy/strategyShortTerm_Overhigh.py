@@ -63,7 +63,8 @@ class ShortTermStrategy_Overhigh(CtaTemplate):
     # 多参数优化时根据F:\uiKLine\json\uiKLine_startpara中的STARTPOS值直接修改该值
     # 直接回测时候也需要直接修改该值
     # 同时修改__init__中的这个值
-    strategyStartpos=1890                   
+    strategyStartpos=1890      
+    strategyEndpos=  2289
     # 策略 做多策略还是做空策略，BOOL值  True=Long False=Short
     # 注意：多参数优化时直接修改该值
     # 直接回测时候也需要直接修改该值
@@ -146,7 +147,8 @@ class ShortTermStrategy_Overhigh(CtaTemplate):
         self.BKPRICE                         =[EMPTY_FLOAT_WH,EMPTY_FLOAT_WH]
         self.SKPRICE                         =EMPTY_FLOAT_WH
         self.initDays                        =self.E_LONG if self.LongOrShort==True else self.SK_E_LONG
-        self.strategyStartpos                =1890      
+        self.strategyStartpos                =1890     
+        self.strategyEndpos                  =2289 
         self.can_overhigh                    =True
         
         self.bg = BarGenerator(self.onBar)
@@ -197,7 +199,17 @@ class ShortTermStrategy_Overhigh(CtaTemplate):
         am = self.am        
         am.updateBar(bar)
         if not am.inited:
-            return      
+            return  
+        
+        if len(self.all_bar) > self.strategyEndpos :   
+            if self.pos > 0:
+                self.sell(bar.close, self.pos)
+                self.putEvent()              
+            if self.pos < 0:
+                self.cover(bar.close, abs(self.pos)) 
+                self.putEvent()                          
+            return
+        
         # 更新最近三次短期列表的值 低1 高2 低1-->做多买入 /  高2 低1 高2-->(做多卖平 or 做空卖出)
         if len(self.short_term_last_three_index) < 3 :
             if self.short_term_list[len(self.all_bar)-1] != 0 :

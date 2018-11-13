@@ -64,7 +64,7 @@
 5、 测试有否过度拟合
 
 6、 使用中
-    setting.addParameter('A_LOSS_SP'         ,  0.19)     #{    保证金亏损幅度 用于卖平  默认0.45} 
+    setting.addParameter('A_LOSS_SP'         ,  0.19)      #{    保证金亏损幅度 用于卖平  默认0.45} 
     setting.addParameter('A_FLAOT_PROFIT'    ,  2950)      #{    最大浮盈幅度 用于卖平  默认3200  }
     setting.addParameter('E_LONG'            ,  13  )      #{    做多趋势均线天数}    115  
 """
@@ -105,13 +105,14 @@ if __name__ == '__main__':
     setting.setOptimizeTarget('maxDdPercent')     
   
     
-    setting.addParameter('A_LOSS_SP'         ,  0.15,0.25,0.01)     #{    保证金亏损幅度 用于卖平  默认0.45} 
-    setting.addParameter('A_FLAOT_PROFIT'    ,  2800,3000,50)      #{    最大浮盈幅度 用于卖平  默认3200  }
-    setting.addParameter('E_LONG'            ,  10  ,13  , 1)      #{    做多趋势均线天数}    115  
+#    setting.addParameter('A_LOSS_SP_ALL'         ,  0.1,0.5,0.1)    
+#    setting.addParameter('A_FLAOT_PROFIT_ALL'    ,  1900,3000,300)     
+#    setting.addParameter('A_MIN_UP_ALL'           ,  0.9,1.5,0.01)      
+
         
 #    setting.addParameter('A_LOSS_SP'         ,  0.15)      #{    保证金亏损幅度 用于卖平  默认0.45} 
 #    setting.addParameter('A_FLAOT_PROFIT'    ,  3250)      #{    最大浮盈幅度 用于卖平  默认3200  }
-#    setting.addParameter('E_LONG'            ,  13)        #{   做多趋势均线天数}    115  
+    setting.addParameter('E_LONG_FIRST'       ,5, 34,1)        #{   做多趋势均线天数}    115  
 
 #    setting.addParameter('SK_A_LOSS_SP'         ,  0.1,0.5,0.2)     #{    保证金亏损幅度 用于卖平  默认0.45} 
 #    setting.addParameter('SK_A_FLAOT_PROFIT'    ,  2000,4000,1000)      #{    最大浮盈幅度 用于卖平  默认3200  }

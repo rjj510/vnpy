@@ -41,11 +41,12 @@ def calculateDailyResult_init(long_or_short):
 
 #----------------------------------------------------------------------
 '''根据计算每日结果，输出到CSV中'''
-def calculateDailyResult_to_CSV(engine,date,pos,csvfile):
+def calculateDailyResult_to_CSV(engine,date,pos,enddate,endpos,csvfile):
     """主函数，供其他python程序进行模块化程序调用"""
     # 设置回测用的数据起始日期
     engine.setStartDate('20090327')
     engine.strategy.strategyStartpos = pos
+    engine.strategy.strategyEndpos = endpos
     
     # 设置使用的历史数据库
     engine.setDatabase(DAILY_DB_NAME, 'RB9999')
@@ -60,6 +61,7 @@ def calculateDailyResult_to_CSV(engine,date,pos,csvfile):
     os.system('cls')
     print(u"RB9999 短期结构加仓交易系统")
     print('start date:'+date)
+    print('end   date:'+enddate)
     engine.showBacktestingResultLikeWH(df)
 #----------------------------------------------------------------------
 '''获得策略需要的初始化时间'''

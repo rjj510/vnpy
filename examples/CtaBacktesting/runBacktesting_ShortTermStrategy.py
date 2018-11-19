@@ -65,12 +65,12 @@ def get_strategy_init_days(engine):
 #----------------------------------------------------------------------
 '''获得策略E_LONG'''
 def get_strategy_E_LONG(engine):
-    return engine.strategy.E_LONG_FIRST    
+    return engine.strategy.E_LONG_ALL    
 
 #----------------------------------------------------------------------
 '''获得策略SK_E_LONG'''
 def get_strategy_SK_E_LONG(engine):
-    return engine.strategy.SK_E_LONG    
+    return engine.strategy.SK_E_LONG_ALL
     
 if __name__ == '__main__' :
     #or  __name__ == 'runBacktesting_WH':

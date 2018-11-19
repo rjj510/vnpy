@@ -1757,7 +1757,13 @@ class BacktestingEngine(object):
         tb1.add_row([u'最大亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList']))}])
         tb1.add_row([u'最大盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(max(d['pnlList']))].strftime("%Y-%m-%d")}])
         tb1.add_row([u'最大亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(min(d['pnlList']))].strftime("%Y-%m-%d")}])        
-        tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList'])/abs(d['totalWinning']))}])     
+          
+        if d['totalWinning'] == 0:
+            tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(0)}])  
+        else:
+            tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList'])/abs(d['totalWinning']))}])    
+            
+            
         if d['totalLosing'] == 0:
             tb1.add_row([u'最大亏损/总亏损',"%(xxx)s"%{'xxx':formatNumber(0)}])  
         else:

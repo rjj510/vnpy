@@ -110,17 +110,13 @@ if __name__ == '__main__':
 #    setting.addParameter('A_MIN_UP_ALL'           ,  0.9,1.5,0.01)      
 
         
-#    setting.addParameter('A_LOSS_SP'         ,  0.15)      #{    保证金亏损幅度 用于卖平  默认0.45} 
-#    setting.addParameter('A_FLAOT_PROFIT'    ,  3250)      #{    最大浮盈幅度 用于卖平  默认3200  }
-    setting.addParameter('E_LONG_FIRST'       ,5, 34,1)        #{   做多趋势均线天数}    115  
 
-#    setting.addParameter('SK_A_LOSS_SP'         ,  0.1,0.5,0.2)     #{    保证金亏损幅度 用于卖平  默认0.45} 
-#    setting.addParameter('SK_A_FLAOT_PROFIT'    ,  2000,4000,1000)      #{    最大浮盈幅度 用于卖平  默认3200  }
-#    setting.addParameter('SK_E_LONG'            ,  5  ,15  , 4)      #{    做多趋势均线天数}    115  
+
+    setting.addParameter('SK_A_LOSS_SP_ALL'         ,  0.37)    
+    setting.addParameter('SK_A_FLAOT_PROFIT_ALL'    ,  1450)     
+    setting.addParameter('A_MIN_DOWN_ALL'           ,  0.1  ,1.5 , 0.01)   
         
-#    setting.addParameter('SK_A_LOSS_SP'         ,  0.35)     #{    保证金亏损幅度 用于卖平  默认0.45} 
-#    setting.addParameter('SK_A_FLAOT_PROFIT'    ,  3000)      #{    最大浮盈幅度 用于卖平  默认3200  }
-#    setting.addParameter('SK_E_LONG'            ,  5)      #{    做多趋势均线天数}    115  
+
 
     
     # 性能测试环境：I7-3770，主频3.4G, 8核心，内存16G，Windows 7 专业版

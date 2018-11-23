@@ -356,7 +356,7 @@ class ShortTermStrategy(CtaTemplate):
         if not am.inited:
             return      
         
-        if len(self.all_bar) > self.strategyEndpos :   
+        if len(self.all_bar) > self.strategyEndpos+1 :   
             '''
             if self.pos > 0:
                 self.sell(bar.close, self.pos)

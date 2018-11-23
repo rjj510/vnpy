@@ -97,7 +97,7 @@ class DoubleMaStrategyWh(CtaTemplate):
         self.am = ArrayManager(self.initDays)
         
         self.strategyStartpos                =1891      
-        self.strategyEndpos                  =2344        
+        self.strategyEndpos                  =2349        
         self.all_bar                         =[]       
         # 注意策略类中的可变对象属性（通常是list和dict等），在策略初始化时需要重新创建，
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
@@ -154,16 +154,8 @@ class DoubleMaStrategyWh(CtaTemplate):
         if not am.inited:
             return
         
-        if len(self.all_bar) > self.strategyEndpos :   
-            '''
-            if self.pos > 0:
-                self.sell(bar.close, self.pos)
-                self.putEvent()              
-            if self.pos < 0:
-                self.cover(bar.close, abs(self.pos)) 
-                self.putEvent()                         
-            '''
-            return
+        if len(self.all_bar) > self.strategyEndpos+1 :  
+                return
         
         #/*用CLOSE上下穿越交易均线，来确定买入或者卖出时机*/
         #//A=TRADE 交易

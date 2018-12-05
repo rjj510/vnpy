@@ -45,21 +45,6 @@
     输出：    
     {u'E_LONG': 13, u'A_LOSS_SP': 0.19, u'A_FLAOT_PROFIT': 2950}	
     50.47	1514.00	60.00	20	2.39	-3550.00	-8.55	-1910.00	-4.06	
-
-
- 4、输入：   
-
-    输出： 
-
-    输入：   
-    输出：    
-
-
-    输入：
-    输出：   
-   
-    使用中
-
     
 5、 测试有否过度拟合
 
@@ -114,7 +99,7 @@ if __name__ == '__main__':
 
     setting.addParameter('SK_A_LOSS_SP_ALL'         ,  0.37)    
     setting.addParameter('SK_A_FLAOT_PROFIT_ALL'    ,  1450)     
-    setting.addParameter('A_MIN_DOWN_ALL'           ,  0.1  ,1.5 , 0.01)   
+    setting.addParameter('A_MIN_DOWN_ALL'           ,  0.9)   
         
 
 

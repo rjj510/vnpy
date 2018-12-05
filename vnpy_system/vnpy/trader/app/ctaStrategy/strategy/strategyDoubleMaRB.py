@@ -45,13 +45,13 @@ class DoubleMaStrategyWh(CtaTemplate):
     SK_A_LOSS_SP     = 0.08     #{保证金亏损幅度     用于买平}    
     SK_A_DAY_LOSS    = 1.7      #{达到当日最大涨幅   用于买平}    
     SK_A_FLAOT_PROFIT= 2900     #{最大浮盈          用于买平}   
-    SK_E_LONG        = 69       #{做空趋势均线天数   用于判断是否做空}                                        
-    SK_E_DAYS_LONG   = 6        #{做空趋势线的天数   用于判断是否做空}   
+    SK_E_LONG        = 69       #{做空趋势均线天数   用于卖开 用于判断是否做空}                                        
+    SK_E_DAYS_LONG   = 6        #{做空趋势线的天数   用于卖开 用于判断是否做空}   
     
     
     # 策略变量
-    SK_A_ma0   = EMPTY_FLOAT
-    SK_A_ma1   = EMPTY_FLOAT
+    SK_A_ma0   = EMPTY_FLOAT #today
+    SK_A_ma1   = EMPTY_FLOAT #yesterday
     SK_A_close1= EMPTY_FLOAT    
     BARSLAST_CR_UP_SK_A_LONG    = EMPTY_INT_WH
     BARSLAST_CR_DOWN_SK_A_LONG  = EMPTY_INT_WH
@@ -97,7 +97,7 @@ class DoubleMaStrategyWh(CtaTemplate):
         self.am = ArrayManager(self.initDays)
         
         self.strategyStartpos                =1891      
-        self.strategyEndpos                  =2349        
+        self.strategyEndpos                  =2357        
         self.all_bar                         =[]       
         # 注意策略类中的可变对象属性（通常是list和dict等），在策略初始化时需要重新创建，
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
@@ -242,9 +242,9 @@ class DoubleMaStrategyWh(CtaTemplate):
         # 对于无需做细粒度委托控制的策略，可以忽略onOrder              
         if trade.direction == DIRECTION_SHORT and trade.offset == OFFSET_OPEN  :          
             self.SKPRICE = trade.price
-            print('SELL :',trade.tradeTime,trade.price)
+            print'DMA SELL :',',',trade.tradeTime,',',trade.price
         if trade.direction == DIRECTION_LONG and trade.offset == OFFSET_CLOSE: 
-            print('COVER:',trade.tradeTime,trade.price,(self.SKPRICE- trade.price)*self.A_WEIGHT,'{:08b}'.format(self.BP_style)[-4:]) 
+            print'DMA COVER:',',',trade.tradeTime,',',trade.price,',',(self.SKPRICE- trade.price)*self.A_WEIGHT,'{:08b}'.format(self.BP_style)[-4:] 
             self.SKPRICE = EMPTY_FLOAT_WH   
     #----------------------------------------------------------------------
     def onStopOrder(self, so):

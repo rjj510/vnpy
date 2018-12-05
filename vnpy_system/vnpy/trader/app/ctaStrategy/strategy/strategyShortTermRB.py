@@ -57,8 +57,8 @@ class ShortTermStrategy(CtaTemplate):
     # 同时修改__init__中的这个值
     #strategyStartpos=1890              
     #strategyEndpos=2340           
-    strategyStartpos=1343  #   20141010           
-    strategyEndpos=1826    #   20160927
+    strategyStartpos=1  #   20141010           
+    strategyEndpos=2353    #   20160927
     
     # 策略 做多策略还是做空策略，BOOL值  True=Long False=Short
     # 注意：多参数优化时直接修改该值
@@ -70,7 +70,7 @@ class ShortTermStrategy(CtaTemplate):
     A_LOSS_SP_ALL       = 0.16               # 保证金亏损幅度     #
     A_FLAOT_PROFIT_ALL  = 1900               # 最佳浮盈           # 
     A_MIN_UP_ALL        = 0.9                # close超过short_term_last_two_high_all_index[1]幅度# 
-    E_LONG_ALL          =34       
+    E_LONG_ALL          = 34       
     
     ###--20090327优化参数(strategyStartpos = 1890 20170103)开空-----#####
     SK_A_LOSS_SP_ALL     = 0.37               # 保证金亏损幅度   #
@@ -131,7 +131,8 @@ class ShortTermStrategy(CtaTemplate):
         self.initDays                        =self.E_LONG_ALL if self.LongOrShort==True else self.SK_E_LONG_ALL
         self.MAXCLOSE_AFTER_OPEN             =EMPTY_FLOAT_WH #建仓后close的最大值
         self.strategyStartpos                =1343      
-        self.strategyEndpos                  =1826                
+        self.strategyEndpos                  =1826        
+        self.SP_style   = 0000          
         
         self.bg = BarGenerator(self.onBar)
         self.am = ArrayManager(self.initDays)  
@@ -239,27 +240,36 @@ class ShortTermStrategy(CtaTemplate):
                     # 最后： 如果指标没有被使用过
                     if  cmp(self.short_term_open_last_two_all_index , self.short_term_last_two_high_all_index) != 0:
                         BK_Condition_2 = True                             
-        #--------------------------2 、做多卖平条件-----------------------------------------------          
+        #--------------------------2 、做多卖平条件-----------------------------------------------  
+        self.SP_style   = 0000             
         #条件1：保证金亏损幅度         
         SP_Condition_1  = False            
         if self.pos == 1:
             A_PRICE_SP              = self.BKPRICE*self.A_WEIGHT*self.A_BZJ      #{最近买开价位总费用} 
             SP_Condition_1          = (self.BKPRICE-bar.close)*self.A_WEIGHT > (A_PRICE_SP*self.A_LOSS_SP_ALL)    
+            if SP_Condition_1:
+                self.SP_style     = self.SP_style | 8 #1000   
         
         #条件2：最佳浮盈  
         SP_Condition_2  = False   
         if self.pos == 1:
             SP_Condition_2          = (bar.close-self.BKPRICE)*self.A_WEIGHT >= self.A_FLAOT_PROFIT_ALL  
+            if SP_Condition_2:
+                self.SP_style     = self.SP_style | 4 #1000   
             
         #条件3：closed低于用于开仓的第二个低点日的low值  
         SP_Condition_3  = False   
         if self.pos == 1 and self.BK_style==21:
             SP_Condition_3          = bar.close < self.all_bar[self.short_term_open_last_two_all_index[1]].low   
+            if SP_Condition_3:
+                self.SP_style     = self.SP_style | 2 #0010   
             
         #条件4：closed低于用于开仓的第一个高点日的high值  
         SP_Condition_4  = False   
         if self.pos == 1 and self.BK_style==22:
-            SP_Condition_4          = bar.close < self.all_bar[self.short_term_open_last_two_all_index[0]].high                       
+            SP_Condition_4          = bar.close < self.all_bar[self.short_term_open_last_two_all_index[0]].high   
+            if SP_Condition_4:
+                self.SP_style     = self.SP_style | 1 #0001                       
             
         #-------------------------3 、 做多执行交易---------------------------------------------------        
         if BK_Condition_1 and self.pos == 0 and self.BK_style==EMPTY_INT_WH and self.LongOrShort==True:    
@@ -381,17 +391,17 @@ class ShortTermStrategy(CtaTemplate):
         """收到成交推送（必须由用户继承实现）"""
         # 对于无需做细粒度委托控制的策略，可以忽略onOrder         
         if trade.direction == DIRECTION_LONG and trade.offset == OFFSET_OPEN  :    #做多买开
-            print('BUY :',trade.tradeTime,trade.price ,self.BK_style )
+            print 'STRB BUY :',',',trade.tradeTime,',',trade.price ,',',self.BK_style 
             self.BKPRICE = trade.price
         if trade.direction == DIRECTION_SHORT and trade.offset == OFFSET_CLOSE:    #做多卖平
-            print('SELL:',trade.tradeTime,trade.price,(trade.price- self.BKPRICE)*self.A_WEIGHT )
+            print 'STRB SELL:',',',trade.tradeTime,',',trade.price,(trade.price- self.BKPRICE)*self.A_WEIGHT,',' ,'{:08b}'.format(self.SP_style)[-4:]
             self.BKPRICE = EMPTY_FLOAT_WH   
             
         if trade.direction == DIRECTION_SHORT and trade.offset == OFFSET_OPEN  :   #做空卖开
-            print('SELL  :',trade.tradeTime,trade.price ,self.SK_style )            
+            print 'STRB SELL  :',',',trade.tradeTime,',',trade.price ,',',self.SK_style             
             self.SKPRICE = trade.price
         if trade.direction == DIRECTION_LONG and trade.offset == OFFSET_CLOSE:     #做空买平
-            print('COVER:',trade.tradeTime,trade.price,(self.SKPRICE- trade.price)*self.A_WEIGHT )
+            print 'STRB COVER:',',',trade.tradeTime,',',trade.price,',',(self.SKPRICE- trade.price)*self.A_WEIGHT 
             self.SKPRICE = EMPTY_FLOAT_WH     
     #----------------------------------------------------------------------
     def onStopOrder(self, so):

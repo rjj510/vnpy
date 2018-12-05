@@ -15,7 +15,7 @@ import os
 
 from vnpy.trader.app.ctaStrategy.ctaBacktesting import BacktestingEngine, MINUTE_DB_NAME,DAILY_DB_NAME
 
-import vnpy.trader.app.ctaStrategy.strategy.strategyShortTerm_Overhigh as STS
+import vnpy.trader.app.ctaStrategy.strategy.strategyShortTerm_Overhigh_RB as STS
 #----------------------------------------------------------------------
 def calculateDailyResult_init(long_or_short):
     """主函数，供其他python程序进行模块化程序初始化调用"""

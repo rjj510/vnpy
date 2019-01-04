@@ -1,7 +1,7 @@
 # encoding: UTF-8
 
 """
-这里的Demo是一个MA_螺纹_多_PLUS_2017策略实现
+这里的策略是根据《短线交易秘诀（原书第2版）》第四章动能穿透的内容编写而成
 """
 
 from __future__ import division
@@ -36,7 +36,7 @@ class strategy_Volatility_RB(CtaTemplate):
     #20181129 做多的优化参数优化期全部数据 [星期1,2,3]
     BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
     BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
-    SP_Volatility    = 1.0      #{卖平的成交价波幅   用于卖平}  
+    SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
     BK_BEFORE_DAY    = 1        #{波幅的天数                } 
     BK_A_FLAOT_PROFIT_ALL=500   #{最佳浮盈                  } 
     #20181129 做多的优化参数优化期20170103-20181130 [星期1,2,3,4,5]
@@ -82,7 +82,7 @@ class strategy_Volatility_RB(CtaTemplate):
     
     # 策略变量
     showtrade        = False  
-    LongOrShort      = False                
+    LongOrShort      = True                
     # 参数列表，保存了参数的名称
     paramList = ['name',
                  'className',
@@ -178,10 +178,17 @@ class strategy_Volatility_RB(CtaTemplate):
             '''
             return
         
-        
+        # 这个出了一个大问题 -1代表的是取今天的数据，-2代表取前一天的数据
+        # 根据书中内容本意是取-2前一天的数据，结果错写成-1.所有测试结果也是按照取值-1计算。
+        # 万幸的是取值-1的结果也不错，暂时以取值-1位置。
+        # 代表的逻辑是：
+        # 下影线长 上影线短 ，open+BK_CURDAYRANGE*self.BK_Volatility 容易冲出范围
+        # 光头光脚          ，open+BK_CURDAYRANGE*self.BK_Volatility 不易冲出范围
+        # 下影线短 上影线长 ，open+BK_CURDAYRANGE*self.BK_Volatility 不易冲出范围
+        # 总之，从K线上看 BK_Condition_1是一个倒锤阳线才可以，或者接近光头光脚阳线
         BK_CURDAYRANGE1 = self.all_bar[-self.BK_BEFORE_DAY].high - self.all_bar[-1].low
-        BK_CURDAYRANGE1 = self.all_bar[-1].high - self.all_bar[-self.BK_BEFORE_DAY].low
-        BK_CURDAYRANGE  = max(BK_CURDAYRANGE1,BK_CURDAYRANGE1)     
+        BK_CURDAYRANGE2 = self.all_bar[-1].high - self.all_bar[-self.BK_BEFORE_DAY].low
+        BK_CURDAYRANGE  = max(BK_CURDAYRANGE1,BK_CURDAYRANGE2)     
         
         SK_CURDAYRANGE1 = self.all_bar[-self.BK_BEFORE_DAY].high - self.all_bar[-1].low
         SK_CURDAYRANGE2 = self.all_bar[-1].high - self.all_bar[-self.SK_BEFORE_DAY].low
@@ -193,7 +200,7 @@ class strategy_Volatility_RB(CtaTemplate):
             
         #-------------------------1、做多买开条件-----------------------------------------
         #条件1：价格高于开盘价，达到前日波幅买入；没有办法确认价格是收阳还是收阴，只能在当天价格确实有高于开盘价格幅度或低于开盘幅度的那一刹那成交openorclose
-        BK_Condition_1 = False             
+        BK_Condition_1 = False     
         if bar.low <= bar.open  +  (BK_CURDAYRANGE*self.BK_Volatility) and  \
            bar.high>= bar.open  +  (BK_CURDAYRANGE*self.BK_Volatility) and  \
            bar.close>=bar.open:

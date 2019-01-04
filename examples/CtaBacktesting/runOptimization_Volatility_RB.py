@@ -99,6 +99,10 @@
     setting.addParameter('BK_BEFORE_DAY'           ,1   ) 
     setting.addParameter('BK_A_FLAOT_PROFIT_ALL'   ,500 )    
     
+    20181227
+    setting.addParameter('SP_Volatility'           ,1.0 )  修改为 
+    setting.addParameter('SP_Volatility'           ,0.9)
+    
 4、 测试有否过度拟合
 
 -----------------------------------------------------------------------------------------------------------
@@ -432,12 +436,9 @@ if __name__ == '__main__':
     setting.setOptimizeTarget('maxDdPercent')     
                 
     
-    setting.addParameter('SK_A_LOSS_SP'            ,1050) 
-    setting.addParameter('SK_Volatility'           ,0.3 ) 
-    setting.addParameter('BP_Volatility'           ,0.9 )  
-    setting.addParameter('SK_BEFORE_DAY'           ,1   ) 
-    setting.addParameter('SK_A_FLAOT_PROFIT_ALL'   ,1000)  
-    
+
+    setting.addParameter('SP_Volatility'           ,0.9,1.0,0.01 )  
+    setting.addParameter('BK_A_FLAOT_PROFIT_ALL'   ,400  ,800 ,50  ) 
             
     # 性能测试环境：I7-3770，主频3.4G, 8核心，内存16G，Windows 7 专业版
     # 测试时还跑着一堆其他的程序，性能仅供参考

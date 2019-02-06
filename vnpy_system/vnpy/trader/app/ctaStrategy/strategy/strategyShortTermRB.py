@@ -394,7 +394,7 @@ class ShortTermStrategy(CtaTemplate):
             print 'STRB BUY :',',',trade.tradeTime,',',trade.price ,',',self.BK_style 
             self.BKPRICE = trade.price
         if trade.direction == DIRECTION_SHORT and trade.offset == OFFSET_CLOSE:    #做多卖平
-            print 'STRB SELL:',',',trade.tradeTime,',',trade.price,(trade.price- self.BKPRICE)*self.A_WEIGHT,',' ,'{:08b}'.format(self.SP_style)[-4:]
+            print 'STRB SELL:',',',trade.tradeTime,',',trade.price,',',(trade.price- self.BKPRICE)*self.A_WEIGHT,',' ,'{:08b}'.format(self.SP_style)[-4:]
             self.BKPRICE = EMPTY_FLOAT_WH   
             
         if trade.direction == DIRECTION_SHORT and trade.offset == OFFSET_OPEN  :   #做空卖开

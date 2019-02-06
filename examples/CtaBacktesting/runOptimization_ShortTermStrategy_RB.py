@@ -63,7 +63,7 @@ from vnpy.trader.app.ctaStrategy.ctaBacktesting import BacktestingEngine, MINUTE
 
 
 if __name__ == '__main__':
-    from vnpy.trader.app.ctaStrategy.strategy.strategyShortTerm import ShortTermStrategy
+    from vnpy.trader.app.ctaStrategy.strategy.strategyShortTermRB import ShortTermStrategy
           
     # 创建回测引擎
     engine = BacktestingEngine()

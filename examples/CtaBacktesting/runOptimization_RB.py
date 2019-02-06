@@ -178,7 +178,7 @@ from __future__ import division
 from __future__ import print_function
 from vnpy.trader.app.ctaStrategy.ctaBacktesting import BacktestingEngine, MINUTE_DB_NAME, OptimizationSetting,DAILY_DB_NAME
 if __name__ == '__main__':
-    from vnpy.trader.app.ctaStrategy.strategy.strategyDoubleMaWH import DoubleMaStrategyWh
+    from vnpy.trader.app.ctaStrategy.strategy.strategyDoubleMaRB import DoubleMaStrategyWh
           
     # 创建回测引擎
     engine = BacktestingEngine()

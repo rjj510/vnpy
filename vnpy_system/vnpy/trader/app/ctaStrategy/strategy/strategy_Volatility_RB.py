@@ -197,7 +197,9 @@ class strategy_Volatility_RB(CtaTemplate):
         if len(self.all_bar) < self.strategyStartpos :
             self.putEvent()            
             return            
-            
+        
+        if bar.date == u'20180523':
+            print bar.date 
         #-------------------------1、做多买开条件-----------------------------------------
         #条件1：价格高于开盘价，达到前日波幅买入；没有办法确认价格是收阳还是收阴，只能在当天价格确实有高于开盘价格幅度或低于开盘幅度的那一刹那成交openorclose
         BK_Condition_1 = False     
@@ -233,6 +235,12 @@ class strategy_Volatility_RB(CtaTemplate):
             if (datetime.strptime(bar.date, "%Y%m%d").weekday() in self.LongBestday) :            
                 self.buy(bar.close, 1)
             else:
+                '''
+                假设周1，2，3交易，周4，5不交易，但周4、5的BK_Condition_1为TRUE（称为虚拟交易买入信号）,需要将周4、5的pos置为大于1，
+                这样即便是下周1（程为虚拟下周1）出现交易信号，系统也不能发出交易信号，因为对于虚拟交易买入信号的虚拟卖出信号还没有发出来，直到虚拟卖出
+                信号发出后才可继续进行交易。
+                只有只有才符合从周1到周5找出的最佳交易日子，所达成的结果。否则虚拟下周1的出现会打乱它后面的所有交易信号。
+                '''
                 self.pos = self.pos+1
                 self.BKDATE = datetime.strptime(bar.date, "%Y%m%d") 
                 self.BKPRICE = bar.close
@@ -290,6 +298,7 @@ class strategy_Volatility_RB(CtaTemplate):
             if (datetime.strptime(bar.date, "%Y%m%d").weekday() in self.ShortBestday) :            
                 self.short(bar.close, 1)  
             else:
+                # 注释参见做多的注释
                 self.pos = self.pos-1
                 self.SKDATE = datetime.strptime(bar.date, "%Y%m%d") 
                 self.SKPRICE = bar.close

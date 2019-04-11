@@ -125,6 +125,7 @@ class strategy_Volatility_RB(CtaTemplate):
         self.BKDATE                          =EMPTY_FLOAT_WH  
         self.SKPRICE                         =EMPTY_FLOAT_WH  
         self.SKDATE                          =EMPTY_FLOAT_WH  
+        self.tradeday                        =0
         # 注意策略类中的可变对象属性（通常是list和dict等），在策略初始化时需要重新创建，
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
         # 策略类中的这些可变对象属性可以选择不写，全都放在__init__下面，写主要是为了阅读
@@ -198,10 +199,13 @@ class strategy_Volatility_RB(CtaTemplate):
             self.putEvent()            
             return            
         
-        if bar.date == u'20180523':
-            print bar.date 
+        #if bar.date=='20190404':
+        #    print bar.date
+            
+        if self.tradeday>0:
+            self.tradeday = self.tradeday+1
         #-------------------------1、做多买开条件-----------------------------------------
-        #条件1：价格高于开盘价，达到前日波幅买入；没有办法确认价格是收阳还是收阴，只能在当天价格确实有高于开盘价格幅度或低于开盘幅度的那一刹那成交openorclose
+        #条件1：收盘价高于开盘价，达到前日波幅买入；没有办法确认价格是收阳还是收阴，只能在当天价格确实有高于开盘价格幅度或低于开盘幅度的那一刹那成交openorclose
         BK_Condition_1 = False     
         if bar.low <= bar.open  +  (BK_CURDAYRANGE*self.BK_Volatility) and  \
            bar.high>= bar.open  +  (BK_CURDAYRANGE*self.BK_Volatility) and  \
@@ -234,6 +238,7 @@ class strategy_Volatility_RB(CtaTemplate):
             #0 '星期一',1 :'星期二',2  '星期三',3 '星期四',4  '星期五',5  '星期六',6 '星期天', 
             if (datetime.strptime(bar.date, "%Y%m%d").weekday() in self.LongBestday) :            
                 self.buy(bar.close, 1)
+                self.tradeday = 1
             else:
                 '''
                 假设周1，2，3交易，周4，5不交易，但周4、5的BK_Condition_1为TRUE（称为虚拟交易买入信号）,需要将周4、5的pos置为大于1，
@@ -263,7 +268,7 @@ class strategy_Volatility_RB(CtaTemplate):
                 return 
                             
         #-------------------------4、做空卖开条件-----------------------------------------
-        #条件4：价格低于开盘价，达到前日波幅卖开；
+        #条件4：价格低于开盘价，达到前日波幅卖开；为什么是SK_CURDAYRANGE1而不是SK_CURDAYRANGE？
         SK_Condition_1 = False 
         if bar.low <= bar.open  -  (SK_CURDAYRANGE1*self.SK_Volatility) and  \
            bar.high>= bar.open  -  (SK_CURDAYRANGE1*self.SK_Volatility) and  \
@@ -343,12 +348,13 @@ class strategy_Volatility_RB(CtaTemplate):
             if self.showtrade: 
                 #0 '星期一',1 :'星期二',2  '星期三',3 '星期四',4  '星期五',5  '星期六',6 '星期天', 
                 self.BKWeekProfit[self.BKDATE.weekday()]=self.BKWeekProfit[self.BKDATE.weekday()]+(trade.price- self.BKPRICE)*self.A_WEIGHT 
-                print 'VRB SELL:',',',trade.tradeTime,',',trade.price,',',(trade.price- self.BKPRICE)*self.A_WEIGHT ,',','{:08b}'.format(self.SP_style)[-4:]                
+                print 'VRB SELL:',',',trade.tradeTime,',',trade.price,',',(trade.price- self.BKPRICE)*self.A_WEIGHT ,',','{:08b}'.format(self.SP_style)[-4:],',',self.tradeday                
                 #for each in self.BKWeekProfit:
                 #    print each,',',  
                 #print '\r',                
             self.BKPRICE = EMPTY_FLOAT_WH   
             self.BKDATE  = EMPTY_FLOAT_WH
+            self.tradeday= 0
             
         if trade.direction == DIRECTION_SHORT and trade.offset == OFFSET_OPEN  :   #做空卖开
             if self.showtrade: 

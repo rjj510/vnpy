@@ -133,7 +133,7 @@ class ShortTermStrategy(CtaTemplate):
         self.strategyStartpos                =1343      
         self.strategyEndpos                  =1826        
         self.SP_style   = 0000          
-        
+        self.tradeday                        =0        
         self.bg = BarGenerator(self.onBar)
         self.am = ArrayManager(self.initDays)  
         
@@ -213,6 +213,11 @@ class ShortTermStrategy(CtaTemplate):
         if len(self.all_bar) < self.strategyStartpos :          
             return
         
+        if self.tradeday > 0:
+            self.tradeday = self.tradeday + 1
+            
+        #if bar.date=='20190408':
+        #    print bar.date        
         ########################################################################################       
         #------------------------ 1 、 做多买开条件-----------------------------------------------        
         # 条件1：短期市场结构是否满足要求 满足为TRUE 不满足为FALSE
@@ -220,7 +225,7 @@ class ShortTermStrategy(CtaTemplate):
         # 首先：满足做多的基本要求形态-->低1 < 低1
         if  self.short_term_list_all[self.short_term_last_two_low_all_index[0]] == 1 and \
             self.short_term_list_all[self.short_term_last_two_low_all_index[1]] == 1  :
-            # 其次：低点是上升的形态 后面的低点高于前面的低点 最后面的低1全部走完（确定一个高、低点需要3个K线）
+            # 其次：低点是上升的形态 后面的低点高于前面的低点 并且 最后面的低1的那个k日线全部走完（确定一个高、低点需要3个K线）
             if  (self.all_bar[self.short_term_last_two_low_all_index[0]].low  < self.all_bar[self.short_term_last_two_low_all_index[1]].low)  and \
                 (len(self.all_bar)                                          == self.short_term_last_two_low_all_index[1]+2) :    
                 # 最后： 如果指标没有被使用过
@@ -232,10 +237,10 @@ class ShortTermStrategy(CtaTemplate):
         # 首先：满足做多的基本要求形态-->高2  <  高2
         if  self.short_term_list_all[self.short_term_last_two_high_all_index[0]] == 2 and \
             self.short_term_list_all[self.short_term_last_two_high_all_index[1]] == 2  :
-            # 其次：高点是上升的形态 后面的高点高于前面的高点 最后面的高2全部走完（确定一个高、低点需要3个K线）
+            # 其次：高点是上升的形态 后面的高点高于前面的高点 并且 最后面的高2的那个k日线全部走完（确定一个高、低点需要3个K线）
             if  (self.all_bar[self.short_term_last_two_high_all_index[0]].high  < self.all_bar[self.short_term_last_two_high_all_index[1]].high)  and \
                 (len(self.all_bar)                                          >= self.short_term_last_two_high_all_index[1]+2) :
-                # 然后：当日的close高于第二个高点的最高值
+                # 然后：高2后面的某个交易日的close高于第二个高点的最高值一定百分比
                 if bar.close > self.all_bar[self.short_term_last_two_high_all_index[1]].high*(1+self.A_MIN_UP_ALL/100.0):
                     # 最后： 如果指标没有被使用过
                     if  cmp(self.short_term_open_last_two_all_index , self.short_term_last_two_high_all_index) != 0:
@@ -277,11 +282,13 @@ class ShortTermStrategy(CtaTemplate):
             self.short_term_open_last_two_all_index  = []
             self.short_term_open_last_two_all_index  = copy.deepcopy(self.short_term_last_two_low_all_index)
             self.BK_style                          = 21
+            self.tradeday                          = 1
         elif BK_Condition_2 and self.pos == 0  and self.BK_style==EMPTY_INT_WH and self.LongOrShort==True: 
             self.buy(bar.close, 1)
             self.short_term_open_last_two_all_index  = []
             self.short_term_open_last_two_all_index  = copy.deepcopy(self.short_term_last_two_high_all_index)
             self.BK_style                          = 22
+            self.tradeday                          = 1
         if (SP_Condition_1 or SP_Condition_2 or SP_Condition_3) and self.pos == 1 and self.BK_style==21:
             self.sell(bar.close, 1)     
             self.BK_style                          = EMPTY_INT_WH  
@@ -391,11 +398,12 @@ class ShortTermStrategy(CtaTemplate):
         """收到成交推送（必须由用户继承实现）"""
         # 对于无需做细粒度委托控制的策略，可以忽略onOrder         
         if trade.direction == DIRECTION_LONG and trade.offset == OFFSET_OPEN  :    #做多买开
-            print 'STRB BUY :',',',trade.tradeTime,',',trade.price ,',',self.BK_style 
+            print 'STRB BUY :',',',trade.tradeTime,',',trade.price ,',',',',self.BK_style 
             self.BKPRICE = trade.price
         if trade.direction == DIRECTION_SHORT and trade.offset == OFFSET_CLOSE:    #做多卖平
-            print 'STRB SELL:',',',trade.tradeTime,',',trade.price,',',(trade.price- self.BKPRICE)*self.A_WEIGHT,',' ,'{:08b}'.format(self.SP_style)[-4:]
+            print 'STRB SELL:',',',trade.tradeTime,',',trade.price,',',(trade.price- self.BKPRICE)*self.A_WEIGHT,',' ,'{:08b}'.format(self.SP_style)[-4:],',',self.tradeday
             self.BKPRICE = EMPTY_FLOAT_WH   
+            self.tradeday=0 
             
         if trade.direction == DIRECTION_SHORT and trade.offset == OFFSET_OPEN  :   #做空卖开
             print 'STRB SELL  :',',',trade.tradeTime,',',trade.price ,',',self.SK_style             

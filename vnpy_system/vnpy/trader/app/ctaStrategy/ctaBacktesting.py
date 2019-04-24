@@ -71,6 +71,7 @@ class BacktestingEngine(object):
         self.endDate = ''
 
         self.capital = 1000000      # 回测时的起始本金（默认100万）
+        self.interest= self.capital # 回测时的权益
         self.slippage = 0           # 回测时假设的滑点
         self.rate = 0               # 回测时假设的佣金比例（适用于百分比佣金）
         self.size = 1               # 合约大小，默认为1    
@@ -169,6 +170,7 @@ class BacktestingEngine(object):
     def setCapital(self, capital):
         """设置资本金"""
         self.capital = capital
+        self.interest= capital
     
     #----------------------------------------------------------------------
     def setSlippage(self, slippage):
@@ -1466,9 +1468,14 @@ class BacktestingEngine(object):
         plt.show()
        
     #----------------------------------------------------------------------
-    def calculateBacktestingResultForWH(self):
-        """计算回测结果,为了文华那样的显示输出""" 
-        self.output(u'计算回测结果')
+    def calculateBacktestingResultForWH(self,LongOrShort = 2):
+        """计算回测结果,为了文华那样的显示输出 LongOrShort:0 多，1 空，2 多空""" 
+        if LongOrShort == 2:
+            self.output(u'计算回测结果')
+        elif LongOrShort == 0:
+            self.output(u'计算回测结果_多')
+        elif LongOrShort == 1:
+            self.output(u'计算回测结果_空')
         
         # 检查成交记录
         if not self.tradeDict:
@@ -1483,7 +1490,7 @@ class BacktestingEngine(object):
         
         tradeTimeList = []          # 每笔成交时间戳
         posList = [0]               # 每笔成交后的持仓情况        
-
+                    
         for trade in self.tradeDict.values():
             # 复制成交对象，因为下面的开平仓交易配对涉及到对成交数量的修改
             # 若不进行复制直接操作，则计算完后所有成交的数量会变成0
@@ -1491,6 +1498,7 @@ class BacktestingEngine(object):
             
             # 多头交易
             if trade.direction == DIRECTION_LONG:
+                           
                 # 如果尚无空头交易
                 if not shortTrade:
                     longTrade.append(trade)
@@ -1534,7 +1542,8 @@ class BacktestingEngine(object):
                                 pass
                         
             # 空头交易        
-            else:
+            else:           
+                
                 # 如果尚无多头交易
                 if not longTrade:
                     shortTrade.append(trade)
@@ -1577,22 +1586,23 @@ class BacktestingEngine(object):
                             else:
                                 pass                    
         
+        
+
         # 到最后交易日尚未平仓的交易，则以最后价格平仓
         if self.mode == self.BAR_MODE:
             endPrice = self.bar.close
         else:
             endPrice = self.tick.lastPrice
-            
-        for trade in longTrade:
+           
+        for trade in longTrade:          
             result = TradingResult(trade.price, trade.dt, endPrice, self.dt, 
                                    trade.volume, self.rate, self.slippage, self.size)
             resultList.append(result)
             
-        for trade in shortTrade:
+        for trade in shortTrade:     
             result = TradingResult(trade.price, trade.dt, endPrice, self.dt, 
                                    -trade.volume, self.rate, self.slippage, self.size)
-            resultList.append(result)            
-        
+            resultList.append(result)   
         # 检查是否有交易
         if not resultList:
             self.output(u'无交易结果')
@@ -1622,7 +1632,15 @@ class BacktestingEngine(object):
         totalLosing = 0         # 总亏损金额   
         wincount= 0
         losecount= 0
+        
+        
         for result in resultList:
+            
+            if LongOrShort == 0 and result.volume<0 :
+                continue
+            if LongOrShort == 1 and result.volume>0 :
+                continue
+            
             capital += result.pnl
             maxCapital = max(capital, maxCapital)
             drawdown = capital - maxCapital
@@ -1863,9 +1881,89 @@ class BacktestingEngine(object):
         
         plt.show()
         '''
-
-    
+    #----------------------------------------------------------------------
+    def showBacktestingResultLikeWH_V1(self, df=None, result=None):
+        """"显示回测结果,类似文华"""
+        d = self.calculateBacktestingResultForWH()
+        d_l = self.calculateBacktestingResultForWH(0)
+        d_s = self.calculateBacktestingResultForWH(1)
+        if len(d) == 0:
+            return
+        # 输出        
+        #权益的相关指标需要，按日统计每日的资金持有情况，不能按照交易结果统计.请注意损益的统计是按照交易结果统计的
+        df = df.set_index('date')
+        df, result = self.calculateDailyStatisticsForWH(df)                  
         
+        tb1 = pt.PrettyTable(["1", "2","3","4"],encoding=sys.stdout.encoding)
+        tb1.field_names = [u'项目']+[u'值']+[u'值_多']+[u'值_空']
+        tb1.add_row([u'时间范围',df.index.tolist()[0].strftime("%Y-%m-%d") +' --- '+df.index.tolist()[-1].strftime("%Y-%m-%d"),"",""])
+        tb1.add_row([u'资金分配量',"%(xxx)s"%{'xxx':formatNumber(self.capital)},"",""])
+        tb1.add_row([u'最终权益',"%(xxx)s"%{'xxx':formatNumber(self.capital+d['capital'])},"",""])
+        tb1.add_row(['  ','  ',"",""])
+
+        tb1.add_row([u'盈利率',"%(xxx)s%%"%{'xxx':formatNumber(d['profitrate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_l['profitrate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_s['profitrate'])}])
+        tb1.add_row([u'总盈利',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_l['totalWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_s['totalWinning'])}])
+        tb1.add_row([u'总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_l['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_s['totalLosing'])}])
+        tb1.add_row([u'净利润',"%(xxx)s"%{'xxx':formatNumber(d['capital'])},"%(xxx)s"%{'xxx':formatNumber(d_l['capital'])},"%(xxx)s"%{'xxx':formatNumber(d_s['capital'])}])
+        if d['totalLosing'] == 0:
+            tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(0)},"",""])
+        else:
+            tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning']/abs(d['totalLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_l['totalWinning']/abs(d_l['totalLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_s['totalWinning']/abs(d_s['totalLosing']))}])
+            
+        tb1.add_row([u'平均盈利',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_l['averageWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning'])}])
+        tb1.add_row([u'平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_l['averageLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_s['averageLosing'])}])
+        if d['averageLosing']==0:
+            tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(0)},"",""])
+        else:
+
+            tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning']/abs(d['averageLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_l['averageWinning']/abs(d_l['averageLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning']/abs(d_s['averageLosing']))}])            
+        tb1.add_row(['  ','  ','',''])
+        
+        tb1.add_row([u'交易次数',"%(xxx)s"%{'xxx':d['totalResult']}  ,"%(xxx)s"%{'xxx':d_l['totalResult']},  "%(xxx)s"%{'xxx':d_s['totalResult']}])
+        tb1.add_row([u'盈利次数',"%(xxx)s"%{'xxx':d['winningResult']},"%(xxx)s"%{'xxx':d_l['winningResult']},"%(xxx)s"%{'xxx':d_s['winningResult']}])
+        tb1.add_row([u'亏损次数',"%(xxx)s"%{'xxx':d['losingResult']} ,"%(xxx)s"%{'xxx':d_l['losingResult']}, "%(xxx)s"%{'xxx':d_s['losingResult']}])
+        tb1.add_row([u'胜率',"%(xxx)s%%"%{'xxx':formatNumber(d['winningRate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_l['winningRate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_s['winningRate'])}])
+        tb1.add_row(['  ','  ','',''])
+        
+
+        tb1.add_row([u'最大盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(max(d_l['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(max(d_s['pnlList']))}])
+        tb1.add_row([u'最大亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_l['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_s['pnlList']))}])
+        tb1.add_row([u'最大盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(max(d['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['pnlList'].index(max(d_l['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['pnlList'].index(max(d_s['pnlList']))].strftime("%Y-%m-%d")}])
+        tb1.add_row([u'最大亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(min(d['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['pnlList'].index(min(d_l['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['pnlList'].index(min(d_s['pnlList']))].strftime("%Y-%m-%d")}])        
+          
+        if d['totalWinning'] == 0:
+            tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(0)},'',''])  
+        else:
+            tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList'])/abs(d['totalWinning']))},"%(xxx)s"%{'xxx':formatNumber(max(d_l['pnlList'])/abs(d_l['totalWinning']))},"%(xxx)s"%{'xxx':formatNumber(max(d_s['pnlList'])/abs(d_s['totalWinning']))}])    
+            
+            
+        if d['totalLosing'] == 0:
+            tb1.add_row([u'最大亏损/总亏损',"%(xxx)s"%{'xxx':formatNumber(0)},'',''])  
+        else:
+            tb1.add_row([u'最大亏损/总亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList'])/d['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(min(d_l['pnlList'])/d_l['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(min(d_s['pnlList'])/d_s['totalLosing'])}])  
+            
+        tb1.add_row([u'最大持续盈利次数',"%(xxx)s"%{'xxx':(max(d['winloselist']))},"%(xxx)s"%{'xxx':(max(d_l['winloselist']))},"%(xxx)s"%{'xxx':(max(d_s['winloselist']))}])        
+        tb1.add_row([u'最大持续盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(max(d['winloselist']))-max(d['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(max(d['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['winloselist'].index(max(d_l['winloselist']))-max(d_l['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d_l['timeList'][d_l['winloselist'].index(max(d_l['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['winloselist'].index(max(d_s['winloselist']))-max(d_s['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d_s['timeList'][d_s['winloselist'].index(max(d_s['winloselist']))].strftime("%Y-%m-%d")}])    
+        tb1.add_row([u'最大持续亏损次数',"%(xxx)s"%{'xxx':(abs(min(d['winloselist'])))},"%(xxx)s"%{'xxx':(abs(min(d_l['winloselist'])))},"%(xxx)s"%{'xxx':(abs(min(d_s['winloselist'])))}])            
+        tb1.add_row([u'最大持续亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(min(d['winloselist']))-abs(min(d['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(min(d['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['winloselist'].index(min(d_l['winloselist']))-abs(min(d_l['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d_l['timeList'][d_l['winloselist'].index(min(d_l['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['winloselist'].index(min(d_s['winloselist']))-abs(min(d_s['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d_s['timeList'][d_s['winloselist'].index(min(d_s['winloselist']))].strftime("%Y-%m-%d")}])                                                                                  
+        tb1.add_row(['  ','  ','',''])
+        
+
+        tb1.add_row([u'损益最大回撤',"%(xxx)s"%{'xxx':formatNumber(min(d['drawdownList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_l['drawdownList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_s['drawdownList']))}])     
+        tb1.add_row([u'损益最大回撤时间',"%(xxx)s"%{'xxx':d['timeList'][d['drawdownList'].index(min(d['drawdownList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['drawdownList'].index(min(d_l['drawdownList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['drawdownList'].index(min(d_s['drawdownList']))].strftime("%Y-%m-%d")}])      
+        tb1.add_row([u'损益最大回撤比',"%(xxx)s"%{'xxx':formatNumber(min(d['drawdownrateList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_l['drawdownrateList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_s['drawdownrateList']))}])  
+        tb1.add_row([u'损益最大回撤比时间',"%(xxx)s"%{'xxx':d['timeList'][d['drawdownrateList'].index(min(d['drawdownrateList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['drawdownrateList'].index(min(d_l['drawdownrateList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['drawdownrateList'].index(min(d_s['drawdownrateList']))].strftime("%Y-%m-%d")}]) 
+        tb1.add_row([u'权益最大回撤',"%(xxx)s"%{'xxx':formatNumber(result['maxDrawdown'])},"",""])    
+        tb1.add_row([u'权益最大回撤时间',"%(xxx)s"%{'xxx':result['maxDrawdowndate']},"",""])            
+        tb1.add_row([u'权益最大回撤比',"%(xxx)s"%{'xxx':formatNumber(result['maxDdPercent'])},"",""])    
+        tb1.add_row([u'权益最大回撤比时间',"%(xxx)s"%{'xxx':result['maxDdPercentdate']},"",""])             
+        
+        
+        tb1.reversesort = True        
+        print(tb1)
+    #----------------------------------------------------------------------
+       
+            
 ########################################################################
 class TradingResult(object):
     """每笔交易的结果"""

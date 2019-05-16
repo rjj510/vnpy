@@ -2,6 +2,43 @@
 
 """
 这里的策略是根据《短线交易秘诀（原书第2版）》第四章动能穿透的内容编写而成
+1 、测量波幅的方式：
+    今日的最高价和收盘价之间的差值。
+    前一日的最高价和收盘价之间的差值。
+    过去X天的平均范围。
+    
+2、进场方式
+    当天的开盘价加上波幅的比例作为买入点， 当天的开盘价减去波幅的比例作为卖出点（1）
+    将第二天的开盘价加上波幅的比例作为买入点， 第二天的开盘价减去波幅的比例作为卖出点（2）
+    根据前一天波幅的某个百分比加上前一天的最高价作为买人信号，或者前一天最低点减去波幅的百分比处卖出。（3）
+    今日收盘价加上今日波幅的某个比例，作为第二日买入的价格点。（4）
+    
+3、出场方式
+    保护性止损
+    入场点位减去前日价格波幅的50%作为我们的保护性止损点
+    在第一个可以获利的开盘价获利离场。
+    最佳浮盈
+    
+4、周交易日
+
+5、更多的思考
+    在行情看涨的日子里买入时用比较小的波动率放大参数，在行情看不太清楚时使用50%的波动率扩大系数来形成离市价点更远的入场点呢？
+    那么我们对离场点又能做些什么呢？在上涨/下跌更明确的日子里，持仓时间更长能否带来更好的结果呢？”
+    
+6、深入研究
+   把一个波动率系数分别加到：（1）今天的收盘价上；（2）昨天的开盘价上；（3）今天的最低价上；（4）今天的中间价上（最高价与最低价的平均值）来观察。
+   测试经历了所有的低收日，即今日收盘比开盘价低，也比前日收盘价低的情况；也经历了所有的高收日，情形刚好与低收日的相反，今日的收盘价比开盘价高，也
+   高于前日的收盘价。以及作为波动率系数在系统中表现最好的三天的平均真值范围的测试结果。这些数值是经过高度优化的
+   低收日且收盘价低于开盘价时，在次日开盘价上涨达到过去三天平均真实波动的60%时买入，
+   在今日收盘价上涨达到三天（表现最好的三天）平均真实波动的60%时买入
+   
+7、趋势的定义
+   如何机械性地定义一个上涨趋势呢？我最喜欢的点子就是看今天的20日收盘价移动均线是不是比昨天的值高，
+   
+8、趋势结合的思考
+   趋势系数滤掉了很多盈利的交易机会，所以看上去似乎形态是高收日的情况下，我们就希望可以不那么关注趋势。
+   而对低收日，我们当然想更注意趋势变化。简而言之，低收日产生的上涨机会更好。
+
 """
 
 from __future__ import division
@@ -23,14 +60,12 @@ class strategy_Volatility_RB_V1(CtaTemplate):
     className = 'strategy_Volatility_RB_V1'
     author = u'任建军'
     
-    Trend_DAYS    = 365      #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
-    Trend_DAYS_Before=20
     # 策略参数Trend_DAYS                   
     A_WEIGHT      = 10       #{每手吨数                }                 
     A_BZJ         = 0.14     #{保证金参数              }
     #--------------以下是可以优化的策略----------------------------
     
-    #20181129 做多的优化参数优化期全部数据 [星期1,2,3]
+    # 做多的优化参数优化期全部数据 [星期1,2,3]
     BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
     BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
     SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
@@ -39,13 +74,28 @@ class strategy_Volatility_RB_V1(CtaTemplate):
     BK_A_FLAOT_PROFIT_ALL=500   #{最佳浮盈                  } 
 
     
-    #20181204 做空的优化参数优化期最近数据 [星期2,3,4]
+    # 做空的优化参数优化期最近数据 [星期2,3,4]
     SK_A_LOSS_SP     = 1050     #{保证金亏损金额     用于买平}  
     SK_Volatility    = 0.3      #{卖开的开盘价波幅   用于卖开}  
     BP_Volatility    = 0.9      #{买平的成交价波幅   用于买平}  
     SK_BEFORE_DAY    = 1        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} 
     BP_BEFORE_DAY    = 1        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} 
     SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
+    
+    # 多空判断
+    Trend_DAYS    = 365         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    ma            = 20
+    
+    # 多空参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
+    
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  
+    BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 2.2#{当CLOSE<MA均线的时候, 放大}
     
     
     # 策略变量
@@ -56,8 +106,6 @@ class strategy_Volatility_RB_V1(CtaTemplate):
                  'className'    ,
                  'author'       ,
                  'vtSymbol'     ,
-                 'Trend_DAYS'   ,
-                 'Trend_DAYS_Before'   ,
                  'BK_A_LOSS_SP' ,
                  'BK_Volatility',
                  'SP_Volatility',
@@ -69,7 +117,17 @@ class strategy_Volatility_RB_V1(CtaTemplate):
                  'BP_Volatility',
                  'SK_BEFORE_DAY',
                  'BP_BEFORE_DAY',
-                 'SK_A_FLAOT_PROFIT_ALL']    
+                 'SK_A_FLAOT_PROFIT_ALL',
+                 'Trend_DAYS',
+                 'ma',
+                 'BK_A_LOSS_SP_RATIO',
+                 'BK_Volatility_RATIO',
+                 'SP_Volatility_RATIO',
+                 'BK_A_FLAOT_PROFIT_ALL_RATIO',
+                 'SK_A_LOSS_SP_RATIO',
+                 'SK_Volatility_RATIO',
+                 'BP_Volatility_RATIO',
+                 'SK_A_FLAOT_PROFIT_ALL_RATIO']    
     
     # 变量列表，保存了变量的名称
     varList = ['inited',
@@ -80,6 +138,26 @@ class strategy_Volatility_RB_V1(CtaTemplate):
     syncList = ['pos']
 
     #----------------------------------------------------------------------
+    def setparalist(self,paralist):
+        """"""            
+        self.BK_A_LOSS_SP     = paralist[0]     
+        self.BK_Volatility    = paralist[1]     
+        self.SP_Volatility    = paralist[2]     
+        self.BK_BEFORE_DAY    = paralist[3]        
+        self.SP_BEFORE_DAY    = paralist[4]      
+        self.BK_A_FLAOT_PROFIT_ALL=paralist[5]
+    
+        self.SK_A_LOSS_SP     = paralist[6]
+        self.SK_Volatility    = paralist[7]     
+        self.BP_Volatility    = paralist[8]     
+        self.SK_BEFORE_DAY    = paralist[9]        
+        self.BP_BEFORE_DAY    = paralist[10]        
+        self.SK_A_FLAOT_PROFIT_ALL=paralist[11]  
+        
+        self.Trend_DAYS      = paralist[12]      
+        self.Trend_DAYS_Before=paralist[13]          
+    
+    #----------------------------------------------------------------------
     def __init__(self, ctaEngine, setting):
         """Constructor"""
         super(strategy_Volatility_RB_V1, self).__init__(ctaEngine, setting)
@@ -88,8 +166,8 @@ class strategy_Volatility_RB_V1(CtaTemplate):
         self.bg = BarGenerator(self.onBar)
         self.am = ArrayManager(self.initDays)
         
-        self.strategyStartpos                =1890      
-        self.strategyEndpos                  =2358        
+        self.strategyStartpos                =1501#1890      
+        self.strategyEndpos                  =2463        
         self.all_bar                         =[]     
         self.SP_style                        =0000 
         self.BP_style                        =0000 
@@ -157,8 +235,8 @@ class strategy_Volatility_RB_V1(CtaTemplate):
         self.bg.updateTick(tick)
         
     #----------------------------------------------------------------------
-    def onBar(self, bar):
-        """收到Bar推送（必须由用户继承实现）"""
+    def strategy_4(self,bar):
+        """主力策略 今日收盘价加上今日波幅的某个比例，作为第二日买入的价格点。（4）"""
         self.all_bar.append(bar)  
         
         if  self.BK_Q_HIGH.qsize() < self.BK_Q_HIGH.maxsize:
@@ -249,29 +327,55 @@ class strategy_Volatility_RB_V1(CtaTemplate):
             self.putEvent()            
             return            
         
-        #if bar.date=='20190419':
+        #if bar.date=='20150629' and self.SK_A_FLAOT_PROFIT_ALL_RATIO>1.84:
         #    print bar.date
+        #    print bar.close
             
         if self.tradeday!=0:
             self.tradeday = self.tradeday+1
             
-        if len(self.all_bar) > self.Trend_DAYS: 
+        now_price_ma= bar.close
+        if len(self.all_bar) > self.Trend_DAYS+self.ma: 
             now_price=[]
             Trend_DAYS_Before_price=[]
-            for index in range(self.Trend_DAYS_Before,0,-1) :
+            for index in range(self.ma,0,-1) :
                 now_price.append(self.all_bar[0-index].close)
                 Trend_DAYS_Before_price.append(self.all_bar[0-index-self.Trend_DAYS].close)   
                 
+            now_price_ma = np.mean(np.mat( np.array(now_price)))
             if  np.mean(np.mat( np.array(now_price)))  > np.mean(np.mat( np.array(Trend_DAYS_Before_price))):
                 self.TrendStatus = 0
             else:
                 self.TrendStatus = 1 
         
+        if self.TrendStatus == 0 and bar.close < now_price_ma:
+            self.BK_Volatility_RATIO_           = 1
+            self.BK_A_FLAOT_PROFIT_ALL_RATIO_   = 1
+            self.BK_A_LOSS_SP_RATIO_            = self.BK_A_LOSS_SP_RATIO
+            self.SP_Volatility_RATIO_           = self.SP_Volatility_RATIO
+        else:
+            self.BK_Volatility_RATIO_         = self.BK_Volatility_RATIO
+            self.BK_A_FLAOT_PROFIT_ALL_RATIO_ = self.BK_A_FLAOT_PROFIT_ALL_RATIO
+            self.BK_A_LOSS_SP_RATIO_          = 1
+            self.SP_Volatility_RATIO_         = 1
+    
+        if self.TrendStatus == 1 and bar.close > now_price_ma:
+            self.SK_Volatility_RATIO_           = 1
+            self.SK_A_FLAOT_PROFIT_ALL_RATIO_   = 1
+            self.SK_A_LOSS_SP_RATIO_            = self.SK_A_LOSS_SP_RATIO
+            self.BP_Volatility_RATIO_           = self.BP_Volatility_RATIO
+        else:
+            self.SK_Volatility_RATIO_           = self.SK_Volatility_RATIO
+            self.SK_A_FLAOT_PROFIT_ALL_RATIO_   = self.SK_A_FLAOT_PROFIT_ALL_RATIO
+            self.SK_A_LOSS_SP_RATIO_            = 1
+            self.BP_Volatility_RATIO_           = 1
+
+
         #-------------------------1、做多买开条件-----------------------------------------
         #条件1：收盘价高于开盘价，达到前日波幅买入；没有办法确认价格是收阳还是收阴，只能在当天价格确实有高于开盘价格幅度或低于开盘幅度的那一刹那成交openorclose
         BK_Condition_1 = False     
-        if min(list(self.BK_Q_LOW.queue))  <= list(self.BK_Q_OPEN.queue)[0]  +  (BK_CURDAYRANGE*self.BK_Volatility) and  \
-           max(list(self.BK_Q_HIGH.queue)) >= list(self.BK_Q_OPEN.queue)[0]  +  (BK_CURDAYRANGE*self.BK_Volatility) and  \
+        if min(list(self.BK_Q_LOW.queue))  <= list(self.BK_Q_OPEN.queue)[0]  +  (BK_CURDAYRANGE*self.BK_Volatility*self.BK_Volatility_RATIO_) and  \
+           max(list(self.BK_Q_HIGH.queue)) >= list(self.BK_Q_OPEN.queue)[0]  +  (BK_CURDAYRANGE*self.BK_Volatility*self.BK_Volatility_RATIO_) and  \
            bar.close>=list(self.BK_Q_OPEN.queue)[0] :
             BK_Condition_1 = True   
                   
@@ -280,20 +384,20 @@ class strategy_Volatility_RB_V1(CtaTemplate):
         #条件1：保证金亏损 保证金亏损只能在第二天进行确认，也不能在当天确认，但是当天可能超过了保证金的亏损。
         SP_Condition_1   = False
         if self.pos == 1:
-            A_PRICE_SP         =  self.BKPRICE-self.BK_A_LOSS_SP/self.A_WEIGHT
-            SP_Condition_1     =  bar.close<A_PRICE_SP  # bar.low <= A_PRICE_SP and  bar.high>=A_PRICE_SP  
+            A_PRICE_SP         =  self.BKPRICE-(self.BK_A_LOSS_SP*self.BK_A_LOSS_SP_RATIO_)/self.A_WEIGHT
+            SP_Condition_1     =  bar.close<A_PRICE_SP    
             if SP_Condition_1:
                 self.SP_style     = self.SP_style | 8 #1000   
         #条件2：买开价格减去波幅的一定比率 由于价格的震荡，当天可能做多后又做空
         SP_Condition_2  = False            
         if self.pos == 1:
-            SP_Condition_2    =  bar.close < self.BKPRICE  -  (SP_CURDAYRANGE*self.SP_Volatility)
+            SP_Condition_2    =  bar.close < self.BKPRICE  -  (SP_CURDAYRANGE*self.SP_Volatility*self.SP_Volatility_RATIO_)
             if SP_Condition_2:
                 self.SP_style     = self.SP_style | 4 #0100   
         #条件3：最佳浮盈
         SP_Condition_3  = False            
         if self.pos == 1:
-            SP_Condition_3     = (bar.close-self.BKPRICE)*self.A_WEIGHT >= self.BK_A_FLAOT_PROFIT_ALL    
+            SP_Condition_3     = int((bar.close-self.BKPRICE)*self.A_WEIGHT) >= int(self.BK_A_FLAOT_PROFIT_ALL*self.BK_A_FLAOT_PROFIT_ALL_RATIO_)    
             if SP_Condition_3:
                 self.SP_style     = self.SP_style | 2 #0010                                          
         #-------------------------3 、 做多执行交易-----------------------------------------------  
@@ -334,8 +438,8 @@ class strategy_Volatility_RB_V1(CtaTemplate):
         #-------------------------4、做空卖开条件-----------------------------------------
         #条件4：价格低于开盘价，达到前日波幅卖开；为什么是SK_CURDAYRANGE1而不是SK_CURDAYRANGE？
         SK_Condition_1 = False 
-        if min(list(self.SK_Q_LOW.queue))  <= list(self.SK_Q_OPEN.queue)[0]   -  (SK_CURDAYRANGE*self.SK_Volatility) and  \
-           max(list(self.SK_Q_HIGH.queue)) >= list(self.SK_Q_OPEN.queue)[0]   -  (SK_CURDAYRANGE*self.SK_Volatility) and  \
+        if min(list(self.SK_Q_LOW.queue))  <= list(self.SK_Q_OPEN.queue)[0]   -  (SK_CURDAYRANGE*self.SK_Volatility*self.SK_Volatility_RATIO_) and  \
+           max(list(self.SK_Q_HIGH.queue)) >= list(self.SK_Q_OPEN.queue)[0]   -  (SK_CURDAYRANGE*self.SK_Volatility*self.SK_Volatility_RATIO_) and  \
            bar.close<list(self.SK_Q_OPEN.queue)[0] :
             SK_Condition_1 = True             
         
@@ -351,13 +455,13 @@ class strategy_Volatility_RB_V1(CtaTemplate):
         #条件2：卖开价格减去波幅的一定比率
         BP_Condition_2  = False            
         if self.pos == -1:
-            BP_Condition_2    =  bar.close > self.SKPRICE  +  (BP_CURDAYRANGE*self.BP_Volatility)
+            BP_Condition_2    =  bar.close > self.SKPRICE  +  (BP_CURDAYRANGE*self.BP_Volatility*self.BP_Volatility_RATIO_)
             if BP_Condition_2:
                 self.BP_style     = self.BP_style | 4 #0100  
         #条件3：最佳浮盈
         BP_Condition_3  = False            
         if self.pos == -1:       
-            BP_Condition_3    = (self.SKPRICE - bar.close)*self.A_WEIGHT >= self.SK_A_FLAOT_PROFIT_ALL    
+            BP_Condition_3    = int((self.SKPRICE - bar.close)*self.A_WEIGHT) >= int(self.SK_A_FLAOT_PROFIT_ALL*self.SK_A_FLAOT_PROFIT_ALL_RATIO_)  
             if BP_Condition_3:
                 self.BP_style     = self.BP_style | 2 #0010    
             
@@ -391,7 +495,246 @@ class strategy_Volatility_RB_V1(CtaTemplate):
                 return  
         
         # 发出状态更新事件
-        self.putEvent()
+        self.putEvent()        
+        
+    #----------------------------------------------------------------------
+    def strategy_2(self,bar):
+        """备选策略 将第二天的开盘价加上波幅的比例作为买入点， 第二天的开盘价减去波幅的比例作为卖出点（2）"""
+        self.all_bar.append(bar)  
+        
+        if  self.BK_Q_HIGH.qsize() < self.BK_Q_HIGH.maxsize:
+            self.BK_Q_HIGH.put(self.all_bar[-1].high)
+        else:
+            self.BK_Q_HIGH.get()
+            self.BK_Q_HIGH.put(self.all_bar[-1].high)  
+        if self.BK_Q_LOW.qsize() < self.BK_Q_LOW.maxsize:
+            self.BK_Q_LOW.put(self.all_bar[-1].low)
+        else:
+            self.BK_Q_LOW.get()
+            self.BK_Q_LOW.put(self.all_bar[-1].low)  
+        if self.BK_Q_OPEN.qsize() < self.BK_Q_OPEN.maxsize:
+            self.BK_Q_OPEN.put(self.all_bar[-1].open)
+        else:
+            self.BK_Q_OPEN.get()
+            self.BK_Q_OPEN.put(self.all_bar[-1].open) 
+        if self.SP_Q_HIGH.qsize() < self.SP_Q_HIGH.maxsize:
+            self.SP_Q_HIGH.put(self.all_bar[-1].high)
+        else:
+            self.SP_Q_HIGH.get()
+            self.SP_Q_HIGH.put(self.all_bar[-1].high)  
+        if self.SP_Q_LOW.qsize() < self.SP_Q_LOW.maxsize:
+            self.SP_Q_LOW.put(self.all_bar[-1].low)
+        else:
+            self.SP_Q_LOW.get()
+            self.SP_Q_LOW.put(self.all_bar[-1].low)      
+            
+        
+        if  self.SK_Q_HIGH.qsize() < self.SK_Q_HIGH.maxsize:
+            self.SK_Q_HIGH.put(self.all_bar[-1].high)
+        else:
+            self.SK_Q_HIGH.get()
+            self.SK_Q_HIGH.put(self.all_bar[-1].high)  
+        if self.SK_Q_LOW.qsize() < self.SK_Q_LOW.maxsize:
+            self.SK_Q_LOW.put(self.all_bar[-1].low)
+        else:
+            self.SK_Q_LOW.get()
+            self.SK_Q_LOW.put(self.all_bar[-1].low)  
+        if self.SK_Q_OPEN.qsize() < self.SK_Q_OPEN.maxsize:
+            self.SK_Q_OPEN.put(self.all_bar[-1].open)
+        else:
+            self.SK_Q_OPEN.get()
+            self.SK_Q_OPEN.put(self.all_bar[-1].open) 
+        if self.BP_Q_HIGH.qsize() < self.BP_Q_HIGH.maxsize:
+            self.BP_Q_HIGH.put(self.all_bar[-1].high)
+        else:
+            self.BP_Q_HIGH.get()
+            self.BP_Q_HIGH.put(self.all_bar[-1].high)  
+        if self.BP_Q_LOW.qsize() < self.BP_Q_LOW.maxsize:
+            self.BP_Q_LOW.put(self.all_bar[-1].low)
+        else:
+            self.BP_Q_LOW.get()
+            self.BP_Q_LOW.put(self.all_bar[-1].low)             
+            
+
+        
+        am = self.am        
+        am.updateBar(bar)
+        if not am.inited:
+            return
+        
+        if len(self.all_bar) > self.strategyEndpos+1 :  
+            '''
+            if self.pos == 1:
+                self.sell(bar.close,1)
+            elif self.pos == -1:
+                self.cover(bar.close,1)
+            '''
+            return
+        
+            
+        # 这个出了一个大问题 -1代表的是取今天的数据，-2代表取前一天的数据
+        # 根据书中内容本意是取-2前一天的数据，结果错写成-1.所有测试结果也是按照取值-1计算。
+        # 万幸的是取值-1的结果也不错，暂时以取值-1位置。
+        # 代表的逻辑是：
+        # 下影线长 上影线短 ，open+BK_CURDAYRANGE*self.BK_Volatility 容易冲出范围
+        # 光头光脚          ，open+BK_CURDAYRANGE*self.BK_Volatility 不易冲出范围
+        # 下影线短 上影线长 ，open+BK_CURDAYRANGE*self.BK_Volatility 不易冲出范围
+        # 总之，从K线上看 BK_Condition_1是一个倒锤阳线才可以，或者接近光头光脚阳线
+        BK_CURDAYRANGE  = self.all_bar[-2].high - self.all_bar[-2].low
+        SP_CURDAYRANGE  = max(list(self.SP_Q_HIGH.queue)) - min(list(self.SP_Q_LOW.queue))    
+             
+        SK_CURDAYRANGE  = self.all_bar[-2].high - self.all_bar[-2].low 
+        BP_CURDAYRANGE  = max(list(self.BP_Q_HIGH.queue)) - min(list(self.BP_Q_LOW.queue))    
+                
+        if len(self.all_bar) < self.strategyStartpos :
+            self.putEvent()            
+            return            
+        
+        #if bar.date=='20170317':
+         #   print bar.date
+         #   print bar.close
+            
+        if self.tradeday!=0:
+            self.tradeday = self.tradeday+1
+            
+        #  当前连续n天的均值大于Trend_DAYS天前的连续n天的均值
+        if len(self.all_bar) > self.Trend_DAYS+self.ma: 
+            now_price=[]
+            Trend_DAYS_Before_price=[]
+            for index in range(self.ma,0,-1) :
+                now_price.append(self.all_bar[0-index].close)
+                Trend_DAYS_Before_price.append(self.all_bar[0-index-self.Trend_DAYS].close)   
+                
+            if  np.mean(np.mat( np.array(now_price)))  > np.mean(np.mat( np.array(Trend_DAYS_Before_price))):
+                self.TrendStatus = 0
+            else:
+                self.TrendStatus = 1 
+                    
+        #-------------------------1、做多买开条件-----------------------------------------
+        #条件1：收盘价高于开盘价，达到前日波幅买入；没有办法确认价格是收阳还是收阴，只能在当天价格确实有高于开盘价格幅度或低于开盘幅度的那一刹那成交openorclose
+        BK_Condition_1 = False     
+        if (bar.high > bar.open + BK_CURDAYRANGE*self.BK_Volatility) and \
+           (bar.low  < bar.open + BK_CURDAYRANGE*self.BK_Volatility) :
+            BK_Condition_1 = True   
+                  
+        #-------------------------2、做多卖平条件-----------------------------------------   
+        self.SP_style=0000
+        #条件1：保证金亏损 保证金亏损只能在第二天进行确认，也不能在当天确认，但是当天可能超过了保证金的亏损。
+        SP_Condition_1   = False
+        if self.pos == 1:
+            A_PRICE_SP         =  self.BKPRICE-self.BK_A_LOSS_SP/self.A_WEIGHT
+            SP_Condition_1     = (bar.high > A_PRICE_SP) and  (bar.low  < A_PRICE_SP)       
+            if SP_Condition_1:
+                self.SP_style  = self.SP_style | 8 #1000   
+        #条件2：最佳浮盈
+        SP_Condition_2  = False            
+        if self.pos == 1:
+            SP_Condition_2     = (bar.open-self.BKPRICE)*self.A_WEIGHT >= self.BK_A_FLAOT_PROFIT_ALL     
+            if SP_Condition_2:
+                self.SP_style     = self.SP_style | 2 #0010                                          
+        #-------------------------3 、 做多执行交易-----------------------------------------------  
+        #if BK_Condition_1 and self.pos==0 and self.LongOrShort == True and self.TrendStatus == 0:    
+        if BK_Condition_1 and self.pos==0 and self.TrendStatus == 0:     
+            #0 '星期一',1 :'星期二',2  '星期三',3 '星期四',4  '星期五',5  '星期六',6 '星期天', 
+            if (datetime.strptime(bar.date, "%Y%m%d").weekday() in self.LongBestday) :            
+                self.buy(bar.open + BK_CURDAYRANGE*self.BK_Volatility, 1)
+                self.tradeday = 1
+            else:
+                '''
+                假设周1，2，3交易，周4，5不交易，但周4、5的BK_Condition_1为TRUE（称为虚拟交易买入信号）,需要将周4、5的pos置为大于1，
+                这样即便是下周1（程为虚拟下周1）出现交易信号，系统也不能发出交易信号，因为对于虚拟交易买入信号的虚拟卖出信号还没有发出来，直到虚拟卖出
+                信号发出后才可继续进行交易。
+                只有只有才符合从周1到周5找出的最佳交易日子，所达成的结果。否则虚拟下周1的出现会打乱它后面的所有交易信号。
+                '''
+                self.pos = self.pos+1
+                self.BKDATE = datetime.strptime(bar.date, "%Y%m%d") 
+                self.BKPRICE = bar.close
+                return 
+            
+        if (SP_Condition_1 or SP_Condition_2 ) and self.pos == 1 :    
+            #0 '星期一',1 :'星期二',2  '星期三',3 '星期四',4  '星期五',5  '星期六',6 '星期天', 
+            if (self.BKDATE.weekday() in self.LongBestday):              
+                if SP_Condition_1:
+                    self.sell(A_PRICE_SP,1)
+                else:
+                    self.sell(bar.open, 1) 
+            else:
+                self.BKWeekProfit[self.BKDATE.weekday()]=self.BKWeekProfit[self.BKDATE.weekday()]+(bar.close- self.BKPRICE)*self.A_WEIGHT 
+                self.pos = self.pos-1
+                self.BKDATE = EMPTY_FLOAT_WH
+                '''
+                if self.showtrade: 
+                    for each in self.BKWeekProfit:
+                        print each,',',  
+                    print '\r',          
+                '''
+                return 
+                            
+        #-------------------------4、做空卖开条件-----------------------------------------
+        #条件4：价格低于开盘价，达到前日波幅卖开；为什么是SK_CURDAYRANGE1而不是SK_CURDAYRANGE？
+        SK_Condition_1 = False 
+        if bar.high > bar.open - SK_CURDAYRANGE*self.SK_Volatility and \
+           bar.low  < bar.open - SK_CURDAYRANGE*self.SK_Volatility :
+            SK_Condition_1 = True   
+
+        
+        #-------------------------5、做空买平条件-----------------------------------------   
+        self.BP_style=0000
+        #条件1：保证金亏损 
+        BP_Condition_1   = False
+        if self.pos == -1:
+            A_PRICE_SP         =  self.SKPRICE+self.SK_A_LOSS_SP/self.A_WEIGHT         
+            BP_Condition_1     =  bar.close>A_PRICE_SP  
+            if BP_Condition_1:
+                self.BP_style  = self.BP_style | 8 #1000   
+        #条件2：卖开价格减去波幅的一定比率
+        BP_Condition_2  = False            
+        if self.pos == -1:
+            BP_Condition_2    =  bar.close > self.SKPRICE  +  (BP_CURDAYRANGE*self.BP_Volatility)
+            if BP_Condition_2:
+                self.BP_style     = self.BP_style | 4 #0100  
+        #条件3：最佳浮盈
+        BP_Condition_3  = False            
+        if self.pos == -1:       
+            BP_Condition_3    = (self.SKPRICE - bar.close)*self.A_WEIGHT >self.SK_A_FLAOT_PROFIT_ALL    
+            if BP_Condition_3:
+                self.BP_style     = self.BP_style | 2 #0010    
+            
+        #-------------------------6 、 做空执行交易-----------------------------------------------        
+        #if SK_Condition_1 and self.pos==0 and self.LongOrShort == False and self.TrendStatus == 1:           
+        if SK_Condition_1 and self.pos==0 and self.TrendStatus == 1:      
+            #0 '星期一',1 :'星期二',2  '星期三',3 '星期四',4  '星期五',5  '星期六',6 '星期天', 
+            if (datetime.strptime(bar.date, "%Y%m%d").weekday() in self.ShortBestday) :            
+                self.short(bar.close, 1)  
+                self.tradeday = 1
+            else:
+                # 注释参见做多的注释
+                self.pos = self.pos-1
+                self.SKDATE = datetime.strptime(bar.date, "%Y%m%d") 
+                self.SKPRICE = bar.close
+                return         
+            
+        if (BP_Condition_1 or BP_Condition_2 or BP_Condition_3 ) and self.pos == -1 :    
+            #0 '星期一',1 :'星期二',2  '星期三',3 '星期四',4  '星期五',5  '星期六',6 '星期天', 
+            if (self.SKDATE.weekday() in self.ShortBestday):              
+                self.cover(bar.close, 1) 
+            else:
+                self.SKWeekProfit[self.SKDATE.weekday()]=self.SKWeekProfit[self.SKDATE.weekday()]+(self.SKPRICE - bar.close)*self.A_WEIGHT 
+                self.pos = self.pos+1
+                self.SKDATE = EMPTY_FLOAT_WH
+                
+                if self.showtrade: 
+                    for each in self.SKWeekProfit:
+                        print each,',',  
+                    print '\r',          
+                return  
+        
+        # 发出状态更新事件
+        self.putEvent()            
+    #----------------------------------------------------------------------
+    def onBar(self, bar):
+        """收到Bar推送（必须由用户继承实现）"""
+        self.strategy_4(bar)
         
     #----------------------------------------------------------------------
     def onOrder(self, order):
@@ -403,7 +746,7 @@ class strategy_Volatility_RB_V1(CtaTemplate):
         """收到成交推送（必须由用户继承实现）"""
         # 对于无需做细粒度委托控制的策略，可以忽略onOrder              
         if trade.direction == DIRECTION_LONG and trade.offset == OFFSET_OPEN  :    #做多买开
-            if self.showtrade: 
+            if self.showtrade : 
                 print 'L , K',',',trade.tradeTime,',',int(trade.price),',','%06d'%(self.ctaEngine.interest),',','     ',',','    ',',','  ',',','%03d'%(trade.volume) 
                 pass
             self.BKPRICE = trade.price
@@ -426,14 +769,14 @@ class strategy_Volatility_RB_V1(CtaTemplate):
             self.tradeday= 0
             
         if trade.direction == DIRECTION_SHORT and trade.offset == OFFSET_OPEN  :   #做空卖开
-            if self.showtrade: 
+            if self.showtrade : 
                 print 'S , K',',',trade.tradeTime,',',int(trade.price),',','%06d'%(self.ctaEngine.interest),',','     ',',','    ',',','  ',',','%03d'%(trade.volume)     
                 pass
             self.SKPRICE = trade.price
             self.SKDATE  = datetime.strptime(trade.tradeTime, "%Y-%m-%d")  
         if trade.direction == DIRECTION_LONG and trade.offset == OFFSET_CLOSE:     #做空买平
             self.ctaEngine.interest =int((self.SKPRICE- trade.price)*self.A_WEIGHT)*abs(trade.volume)+self.ctaEngine.interest 
-            if self.showtrade: 
+            if self.showtrade : 
                 self.SKWeekProfit[self.SKDATE.weekday()]=self.SKWeekProfit[self.SKDATE.weekday()]+(self.SKPRICE - trade.price)*self.A_WEIGHT 
                 if int((self.SKPRICE- trade.price)*self.A_WEIGHT) >= 0 :
                     print 'S , P',',',trade.tradeTime,',',int(trade.price),',','%06d'%(self.ctaEngine.interest),',','\033[0;31m%05d\033[0m'%(int((self.SKPRICE- trade.price)*self.A_WEIGHT)) ,',','{:08b}'.format(self.BP_style)[-4:],',','%02d'%(self.tradeday),',','%03d'%(0-trade.volume) 

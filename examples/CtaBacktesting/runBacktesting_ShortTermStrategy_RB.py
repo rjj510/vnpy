@@ -12,7 +12,7 @@ from vnpy.trader.app.ctaStrategy.ctaBacktesting import BacktestingEngine, MINUTE
 
 import vnpy.trader.app.ctaStrategy.strategy.strategyShortTermRB as STS
 #----------------------------------------------------------------------
-def calculateDailyResult_init(long_or_short):
+def calculateDailyResult_init(long_or_short,capital,size):
     """主函数，供其他python程序进行模块化程序初始化调用"""
     reload(STS)
     # 创建回测引擎
@@ -26,24 +26,25 @@ def calculateDailyResult_init(long_or_short):
     engine.setRate(0)          # 万0.3
     engine.setSize(10)         # 股指合约大小 
     engine.setPriceTick(1)     # 股指最小价格变动
-    engine.setCapital(30000)
+    engine.setCapital(capital)
       
     # 在引擎中创建策略对象
     d = {'LongOrShort':long_or_short}
     engine.initStrategy(STS.ShortTermStrategy, d)
+    engine.strategy.A_WEIGHT=size
     return engine
 
 #----------------------------------------------------------------------
 '''根据计算每日结果，输出到CSV中'''
-def calculateDailyResult_to_CSV(engine,date,pos,enddate,endpos,csvfile):
+def calculateDailyResult_to_CSV(engine,date,pos,enddate,endpos,csvfile,HYNAME,HYSTARTDATE):
     """主函数，供其他python程序进行模块化程序调用"""
     # 设置回测用的数据起始日期与结束日期
-    engine.setStartDate('20090327')
+    engine.setStartDate(HYSTARTDATE)
     engine.strategy.strategyStartpos = pos
     engine.strategy.strategyEndpos   = endpos
     
     # 设置使用的历史数据库
-    engine.setDatabase(DAILY_DB_NAME, 'RB9999')
+    engine.setDatabase(DAILY_DB_NAME, HYNAME)
     
     os.system('cls')
     # 开始跑回测
@@ -53,7 +54,7 @@ def calculateDailyResult_to_CSV(engine,date,pos,enddate,endpos,csvfile):
     df= engine.calculateDailyResult_to_CSV(csvfile)    
   
     # 显示回测结果  用于文华的ctrl+G的快捷键功能
-    print(u"RB9999 短期结构交易系统")
+    print(u"HYNAME"+u" 短期结构交易系统")
     print('start date:'+date)
     print('end   date:'+enddate)
     engine.showBacktestingResultLikeWH(df)

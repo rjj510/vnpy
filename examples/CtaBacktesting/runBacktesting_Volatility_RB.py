@@ -11,7 +11,7 @@ import os
 from vnpy.trader.app.ctaStrategy.ctaBacktesting import BacktestingEngine, MINUTE_DB_NAME,DAILY_DB_NAME
 import vnpy.trader.app.ctaStrategy.strategy.strategy_Volatility_RB as VRB
 #----------------------------------------------------------------------
-def calculateDailyResult_init(showtrade,long_or_short):
+def calculateDailyResult_init(showtrade,long_or_short,capital,size):
     """主函数，供其他python程序进行模块化程序初始化调用"""
     reload(VRB)
     # 创建回测引擎
@@ -25,7 +25,7 @@ def calculateDailyResult_init(showtrade,long_or_short):
     engine.setRate(0)          # 万0.3
     engine.setSize(10)         # 股指合约大小 
     engine.setPriceTick(1)     # 股指最小价格变动
-    engine.setCapital(30000)
+    engine.setCapital(capital)
     
     
     # 在引擎中创建策略对象
@@ -33,19 +33,20 @@ def calculateDailyResult_init(showtrade,long_or_short):
     engine.initStrategy(VRB.strategy_Volatility_RB, d)
     engine.strategy.showtrade=showtrade
     engine.strategy.LongOrShort=long_or_short
+    engine.strategy.A_WEIGHT=size
     return engine
 
 #----------------------------------------------------------------------
 '''根据计算每日结果，输出到CSV中'''
-def calculateDailyResult_to_CSV(engine,start_date,start_pos,end_date,end_pos,csvfile):
+def calculateDailyResult_to_CSV(engine,start_date,start_pos,end_date,end_pos,csvfile,HYNAME,HYSTARTDATE):
     """主函数，供其他python程序进行模块化程序调用"""    
     # 设置回测用的数据起始日期
-    engine.setStartDate('20090327')
+    engine.setStartDate(HYSTARTDATE)
     engine.strategy.strategyStartpos = start_pos
     engine.strategy.strategyEndpos   = end_pos
     
     # 设置使用的历史数据库
-    engine.setDatabase(DAILY_DB_NAME, 'RB9999')
+    engine.setDatabase(DAILY_DB_NAME,HYNAME)
     
     os.system('cls')
     # 开始跑回测
@@ -55,7 +56,7 @@ def calculateDailyResult_to_CSV(engine,start_date,start_pos,end_date,end_pos,csv
     df= engine.calculateDailyResult_to_CSV(csvfile)    
   
     # 显示回测结果  用于文华的ctrl+G的快捷键功能
-    print(u"RB9999 波幅率交易系统")
+    print(u"HYNAME"+u" 波幅率交易系统")
     print('start date:'+start_date)
     print('end   date:'+end_date)      
     engine.showBacktestingResultLikeWH(df)

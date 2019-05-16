@@ -1058,8 +1058,8 @@ class BacktestingEngine(object):
             else:
                 s = pd.Series([setting,'%02.2f'%float(d['totalReturn']),'%02.2f'%float(d1['averagewininglosing']),'%02.2f'%float(d1['winningRate']),d['totalTradeCount'],'%02.2f'%float(d1['profitLossRatio']),'%02.2f'%float(d['maxDrawdown']),'%02.2f'%float(d['maxDdPercent']),'%02.2f'%float(min(d1['drawdownList'])),'%02.2f'%float(min(d1['drawdownrateList']))],\
                               index =         ['参数组'  , '累计收益率'                  , '平均盈亏'                             , '胜率'                        , '交易次数'          , '平均盈利/平均亏损'                , '权益最大回撤'                ,'权益最大回撤比'                ,'损益最大回撤'                       ,'损益最大回撤比'])
-                resultList_csv.append(s)            
-
+                resultList_csv.append(s)    
+                
         Optimization_result_csv = pd.DataFrame(columns = ['参数组', '累计收益率', '平均盈亏', '胜率', '交易次数', '平均盈利/平均亏损', '权益最大回撤','权益最大回撤比','损益最大回撤','损益最大回撤比'])
         for i in range(len(resultList_csv)):
             Optimization_result_csv = Optimization_result_csv.append(resultList_csv[i],ignore_index=True)         
@@ -1193,6 +1193,7 @@ class BacktestingEngine(object):
         
         # 计算衍生数据
         resultDf = resultDf.set_index('date')
+        
                 
         return resultDf      
     #----------------------------------------------------------------------
@@ -1671,7 +1672,9 @@ class BacktestingEngine(object):
                 winloselist.append(losecount)
                 
         # 计算盈亏相关数据
-        winningRate = winningResult/totalResult*100         # 胜率
+        winningRate = 0 
+        if totalResult:
+            winningRate = winningResult/totalResult*100         # 胜率
         
         averageWinning = 0                                  # 这里把数据都初始化为0
         averageLosing = 0
@@ -1900,63 +1903,114 @@ class BacktestingEngine(object):
         tb1.add_row([u'资金分配量',"%(xxx)s"%{'xxx':formatNumber(self.capital)},"",""])
         tb1.add_row([u'最终权益',"%(xxx)s"%{'xxx':formatNumber(self.capital+d['capital'])},"",""])
         tb1.add_row(['  ','  ',"",""])
+        
 
-        tb1.add_row([u'盈利率',"%(xxx)s%%"%{'xxx':formatNumber(d['profitrate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_l['profitrate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_s['profitrate'])}])
-        tb1.add_row([u'总盈利',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_l['totalWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_s['totalWinning'])}])
-        tb1.add_row([u'总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_l['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_s['totalLosing'])}])
-        tb1.add_row([u'净利润',"%(xxx)s"%{'xxx':formatNumber(d['capital'])},"%(xxx)s"%{'xxx':formatNumber(d_l['capital'])},"%(xxx)s"%{'xxx':formatNumber(d_s['capital'])}])
-        if d['totalLosing'] == 0:
-            tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(0)},"",""])
-        else:
+        if d_l['totalResult'] >0 and d_s['totalResult']>0:
+            tb1.add_row([u'盈利率',"%(xxx)s%%"%{'xxx':formatNumber(d['profitrate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_l['profitrate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_s['profitrate'])}])
+            tb1.add_row([u'总盈利',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_l['totalWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_s['totalWinning'])}])      
+            tb1.add_row([u'总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_l['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_s['totalLosing'])}])
+            tb1.add_row([u'净利润',"%(xxx)s"%{'xxx':formatNumber(d['capital'])},"%(xxx)s"%{'xxx':formatNumber(d_l['capital'])},"%(xxx)s"%{'xxx':formatNumber(d_s['capital'])}])
             tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning']/abs(d['totalLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_l['totalWinning']/abs(d_l['totalLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_s['totalWinning']/abs(d_s['totalLosing']))}])
-            
-        tb1.add_row([u'平均盈利',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_l['averageWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning'])}])
-        tb1.add_row([u'平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_l['averageLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_s['averageLosing'])}])
-        if d['averageLosing']==0:
-            tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(0)},"",""])
-        else:
+            tb1.add_row([u'平均盈利',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_l['averageWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning'])}])
+            tb1.add_row([u'平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_l['averageLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_s['averageLosing'])}])
+            tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning']/abs(d['averageLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_l['averageWinning']/abs(d_l['averageLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning']/abs(d_s['averageLosing']))}]) 
+        if d_l['totalResult'] ==0:
+            tb1.add_row([u'盈利率',"%(xxx)s%%"%{'xxx':formatNumber(d['profitrate'])},"%(xxx)s"%{'xxx':'---'},"%(xxx)s%%"%{'xxx':formatNumber(d_s['profitrate'])}])
+            tb1.add_row([u'总盈利',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning'])},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['totalWinning'])}])        
+            tb1.add_row([u'总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalLosing'])},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['totalLosing'])}])
+            tb1.add_row([u'净利润',"%(xxx)s"%{'xxx':formatNumber(d['capital'])},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['capital'])}])
+            tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning']/abs(d['totalLosing']))},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['totalWinning']/abs(d_s['totalLosing']))}])
+            tb1.add_row([u'平均盈利',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning'])},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning'])}])
+            tb1.add_row([u'平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageLosing'])},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['averageLosing'])}])
+            tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning']/abs(d['averageLosing']))},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning']/abs(d_s['averageLosing']))}]) 
+        if d_s['totalResult'] ==0:
+            tb1.add_row([u'盈利率',"%(xxx)s%%"%{'xxx':formatNumber(d['profitrate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_l['profitrate'])},"%(xxx)s"%{'xxx':'---'}])
+            tb1.add_row([u'总盈利',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_l['totalWinning'])},"%(xxx)s"%{'xxx':'---'}])             
+            tb1.add_row([u'总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_l['totalLosing'])},"%(xxx)s"%{'xxx':'---'}])
+            tb1.add_row([u'净利润',"%(xxx)s"%{'xxx':formatNumber(d['capital'])},"%(xxx)s"%{'xxx':formatNumber(d_l['capital'])},"%(xxx)s"%{'xxx':'---'}])
+            tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning']/abs(d['totalLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_l['totalWinning']/abs(d_l['totalLosing']))},"%(xxx)s"%{'xxx':'---'}])
+            tb1.add_row([u'平均盈利',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_l['averageWinning'])},"%(xxx)s"%{'xxx':'---'}])
+            tb1.add_row([u'平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_l['averageLosing'])},"%(xxx)s"%{'xxx':'---'}])
+            tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning']/abs(d['averageLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_l['averageWinning']/abs(d_l['averageLosing']))},"%(xxx)s"%{'xxx':'---'}]) 
 
-            tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning']/abs(d['averageLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_l['averageWinning']/abs(d_l['averageLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning']/abs(d_s['averageLosing']))}])            
+        
         tb1.add_row(['  ','  ','',''])
         
-        tb1.add_row([u'交易次数',"%(xxx)s"%{'xxx':d['totalResult']}  ,"%(xxx)s"%{'xxx':d_l['totalResult']},  "%(xxx)s"%{'xxx':d_s['totalResult']}])
-        tb1.add_row([u'盈利次数',"%(xxx)s"%{'xxx':d['winningResult']},"%(xxx)s"%{'xxx':d_l['winningResult']},"%(xxx)s"%{'xxx':d_s['winningResult']}])
-        tb1.add_row([u'亏损次数',"%(xxx)s"%{'xxx':d['losingResult']} ,"%(xxx)s"%{'xxx':d_l['losingResult']}, "%(xxx)s"%{'xxx':d_s['losingResult']}])
-        tb1.add_row([u'胜率',"%(xxx)s%%"%{'xxx':formatNumber(d['winningRate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_l['winningRate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_s['winningRate'])}])
+        if d_l['totalResult'] >0 and d_s['totalResult']>0:
+            tb1.add_row([u'交易次数',"%(xxx)s"%{'xxx':d['totalResult']}  ,"%(xxx)s"%{'xxx':d_l['totalResult']},  "%(xxx)s"%{'xxx':d_s['totalResult']}])
+            tb1.add_row([u'盈利次数',"%(xxx)s"%{'xxx':d['winningResult']},"%(xxx)s"%{'xxx':d_l['winningResult']},"%(xxx)s"%{'xxx':d_s['winningResult']}])
+            tb1.add_row([u'亏损次数',"%(xxx)s"%{'xxx':d['losingResult']} ,"%(xxx)s"%{'xxx':d_l['losingResult']}, "%(xxx)s"%{'xxx':d_s['losingResult']}])
+            tb1.add_row([u'胜率',"%(xxx)s%%"%{'xxx':formatNumber(d['winningRate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_l['winningRate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_s['winningRate'])}])
+        if d_l['totalResult'] ==0:
+            tb1.add_row([u'交易次数',"%(xxx)s"%{'xxx':d['totalResult']}  ,"%(xxx)s"%{'xxx':'---'},  "%(xxx)s"%{'xxx':d_s['totalResult']}])
+            tb1.add_row([u'盈利次数',"%(xxx)s"%{'xxx':d['winningResult']},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':d_s['winningResult']}])
+            tb1.add_row([u'亏损次数',"%(xxx)s"%{'xxx':d['losingResult']} ,"%(xxx)s"%{'xxx':'---'}, "%(xxx)s"%{'xxx':d_s['losingResult']}])
+            tb1.add_row([u'胜率',"%(xxx)s%%"%{'xxx':formatNumber(d['winningRate'])},"%(xxx)s"%{'xxx':'---'},"%(xxx)s%%"%{'xxx':formatNumber(d_s['winningRate'])}])
+        if d_s['totalResult'] ==0:
+            tb1.add_row([u'交易次数',"%(xxx)s"%{'xxx':d['totalResult']}  ,"%(xxx)s"%{'xxx':d_l['totalResult']},  "%(xxx)s"%{'xxx':'---'}])
+            tb1.add_row([u'盈利次数',"%(xxx)s"%{'xxx':d['winningResult']},"%(xxx)s"%{'xxx':d_l['winningResult']},"%(xxx)s"%{'xxx':'---'}])
+            tb1.add_row([u'亏损次数',"%(xxx)s"%{'xxx':d['losingResult']} ,"%(xxx)s"%{'xxx':d_l['losingResult']}, "%(xxx)s"%{'xxx':'---'}])
+            tb1.add_row([u'胜率',"%(xxx)s%%"%{'xxx':formatNumber(d['winningRate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_l['winningRate'])},"%(xxx)s"%{'xxx':'---'}])
+    
+        
+        tb1.add_row(['  ','  ','',''])
+        
+        if d_l['totalResult'] >0 and d_s['totalResult']>0:
+            tb1.add_row([u'最大盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(max(d_l['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(max(d_s['pnlList']))}])
+            tb1.add_row([u'最大亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_l['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_s['pnlList']))}])
+            tb1.add_row([u'最大盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(max(d['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['pnlList'].index(max(d_l['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['pnlList'].index(max(d_s['pnlList']))].strftime("%Y-%m-%d")}])
+            tb1.add_row([u'最大亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(min(d['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['pnlList'].index(min(d_l['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['pnlList'].index(min(d_s['pnlList']))].strftime("%Y-%m-%d")}])   
+            tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList'])/abs(d['totalWinning']))},"%(xxx)s"%{'xxx':formatNumber(max(d_l['pnlList'])/abs(d_l['totalWinning']))},"%(xxx)s"%{'xxx':formatNumber(max(d_s['pnlList'])/abs(d_s['totalWinning']))}]) 
+            tb1.add_row([u'最大持续盈利次数',"%(xxx)s"%{'xxx':(max(d['winloselist']))},"%(xxx)s"%{'xxx':(max(d_l['winloselist']))},"%(xxx)s"%{'xxx':(max(d_s['winloselist']))}])                   
+            tb1.add_row([u'最大持续盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(max(d['winloselist']))-max(d['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(max(d['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['winloselist'].index(max(d_l['winloselist']))-max(d_l['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d_l['timeList'][d_l['winloselist'].index(max(d_l['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['winloselist'].index(max(d_s['winloselist']))-max(d_s['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d_s['timeList'][d_s['winloselist'].index(max(d_s['winloselist']))].strftime("%Y-%m-%d")}]) 
+            tb1.add_row([u'最大持续亏损次数',"%(xxx)s"%{'xxx':(abs(min(d['winloselist'])))},"%(xxx)s"%{'xxx':(abs(min(d_l['winloselist'])))},"%(xxx)s"%{'xxx':(abs(min(d_s['winloselist'])))}])            
+            tb1.add_row([u'最大持续亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(min(d['winloselist']))-abs(min(d['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(min(d['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['winloselist'].index(min(d_l['winloselist']))-abs(min(d_l['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d_l['timeList'][d_l['winloselist'].index(min(d_l['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['winloselist'].index(min(d_s['winloselist']))-abs(min(d_s['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d_s['timeList'][d_s['winloselist'].index(min(d_s['winloselist']))].strftime("%Y-%m-%d")}])                                                                                  
+        if d_l['totalResult'] ==0:
+            tb1.add_row([u'最大盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList']))},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(max(d_s['pnlList']))}])
+            tb1.add_row([u'最大亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList']))},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(min(d_s['pnlList']))}])
+            tb1.add_row([u'最大盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(max(d['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['pnlList'].index(max(d_s['pnlList']))].strftime("%Y-%m-%d")}])
+            tb1.add_row([u'最大亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(min(d['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['pnlList'].index(min(d_s['pnlList']))].strftime("%Y-%m-%d")}])  
+            tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList'])/abs(d['totalWinning']))},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(max(d_s['pnlList'])/abs(d_s['totalWinning']))}]) 
+            tb1.add_row([u'最大持续盈利次数',"%(xxx)s"%{'xxx':(max(d['winloselist']))},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':(max(d_s['winloselist']))}])      
+            tb1.add_row([u'最大持续盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(max(d['winloselist']))-max(d['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(max(d['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['winloselist'].index(max(d_s['winloselist']))-max(d_s['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d_s['timeList'][d_s['winloselist'].index(max(d_s['winloselist']))].strftime("%Y-%m-%d")}])
+            tb1.add_row([u'最大持续亏损次数',"%(xxx)s"%{'xxx':(abs(min(d['winloselist'])))},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':(abs(min(d_s['winloselist'])))}])            
+            tb1.add_row([u'最大持续亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(min(d['winloselist']))-abs(min(d['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(min(d['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['winloselist'].index(min(d_s['winloselist']))-abs(min(d_s['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d_s['timeList'][d_s['winloselist'].index(min(d_s['winloselist']))].strftime("%Y-%m-%d")}]) 
+        if d_s['totalResult'] ==0:    
+            tb1.add_row([u'最大盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(max(d_l['pnlList']))},"%(xxx)s"%{'xxx':'---'}])
+            tb1.add_row([u'最大亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_l['pnlList']))},"%(xxx)s"%{'xxx':'---'}])
+            tb1.add_row([u'最大盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(max(d['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['pnlList'].index(max(d_l['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':'---'}])
+            tb1.add_row([u'最大亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(min(d['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['pnlList'].index(min(d_l['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':'---'}])       
+            tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList'])/abs(d['totalWinning']))},"%(xxx)s"%{'xxx':formatNumber(max(d_l['pnlList'])/abs(d_l['totalWinning']))},"%(xxx)s"%{'xxx':'---'}]) 
+            tb1.add_row([u'最大持续盈利次数',"%(xxx)s"%{'xxx':(max(d['winloselist']))},"%(xxx)s"%{'xxx':(max(d_l['winloselist']))},"%(xxx)s"%{'xxx':'---'}])        
+            tb1.add_row([u'最大持续盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(max(d['winloselist']))-max(d['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(max(d['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['winloselist'].index(max(d_l['winloselist']))-max(d_l['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d_l['timeList'][d_l['winloselist'].index(max(d_l['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':'---'}])  
+            tb1.add_row([u'最大持续亏损次数',"%(xxx)s"%{'xxx':(abs(min(d['winloselist'])))},"%(xxx)s"%{'xxx':(abs(min(d_l['winloselist'])))},"%(xxx)s"%{'xxx':'---'}])            
+            tb1.add_row([u'最大持续亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(min(d['winloselist']))-abs(min(d['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(min(d['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['winloselist'].index(min(d_l['winloselist']))-abs(min(d_l['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d_l['timeList'][d_l['winloselist'].index(min(d_l['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':'---'}])                                                                                  
+           
+     
         tb1.add_row(['  ','  ','',''])
         
 
-        tb1.add_row([u'最大盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(max(d_l['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(max(d_s['pnlList']))}])
-        tb1.add_row([u'最大亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_l['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_s['pnlList']))}])
-        tb1.add_row([u'最大盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(max(d['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['pnlList'].index(max(d_l['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['pnlList'].index(max(d_s['pnlList']))].strftime("%Y-%m-%d")}])
-        tb1.add_row([u'最大亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(min(d['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['pnlList'].index(min(d_l['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['pnlList'].index(min(d_s['pnlList']))].strftime("%Y-%m-%d")}])        
-          
-        if d['totalWinning'] == 0:
-            tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(0)},'',''])  
-        else:
-            tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList'])/abs(d['totalWinning']))},"%(xxx)s"%{'xxx':formatNumber(max(d_l['pnlList'])/abs(d_l['totalWinning']))},"%(xxx)s"%{'xxx':formatNumber(max(d_s['pnlList'])/abs(d_s['totalWinning']))}])    
-            
-            
-        if d['totalLosing'] == 0:
-            tb1.add_row([u'最大亏损/总亏损',"%(xxx)s"%{'xxx':formatNumber(0)},'',''])  
-        else:
-            tb1.add_row([u'最大亏损/总亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList'])/d['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(min(d_l['pnlList'])/d_l['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(min(d_s['pnlList'])/d_s['totalLosing'])}])  
-            
-        tb1.add_row([u'最大持续盈利次数',"%(xxx)s"%{'xxx':(max(d['winloselist']))},"%(xxx)s"%{'xxx':(max(d_l['winloselist']))},"%(xxx)s"%{'xxx':(max(d_s['winloselist']))}])        
-        tb1.add_row([u'最大持续盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(max(d['winloselist']))-max(d['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(max(d['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['winloselist'].index(max(d_l['winloselist']))-max(d_l['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d_l['timeList'][d_l['winloselist'].index(max(d_l['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['winloselist'].index(max(d_s['winloselist']))-max(d_s['winloselist'])+1].strftime("%Y-%m-%d")+' --- '+d_s['timeList'][d_s['winloselist'].index(max(d_s['winloselist']))].strftime("%Y-%m-%d")}])    
-        tb1.add_row([u'最大持续亏损次数',"%(xxx)s"%{'xxx':(abs(min(d['winloselist'])))},"%(xxx)s"%{'xxx':(abs(min(d_l['winloselist'])))},"%(xxx)s"%{'xxx':(abs(min(d_s['winloselist'])))}])            
-        tb1.add_row([u'最大持续亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['winloselist'].index(min(d['winloselist']))-abs(min(d['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d['timeList'][d['winloselist'].index(min(d['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['winloselist'].index(min(d_l['winloselist']))-abs(min(d_l['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d_l['timeList'][d_l['winloselist'].index(min(d_l['winloselist']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['winloselist'].index(min(d_s['winloselist']))-abs(min(d_s['winloselist']))+1].strftime("%Y-%m-%d")+' --- '+d_s['timeList'][d_s['winloselist'].index(min(d_s['winloselist']))].strftime("%Y-%m-%d")}])                                                                                  
-        tb1.add_row(['  ','  ','',''])
+        if d_l['totalResult'] >0 and d_s['totalResult']>0:
+            tb1.add_row([u'损益最大回撤',"%(xxx)s"%{'xxx':formatNumber(min(d['drawdownList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_l['drawdownList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_s['drawdownList']))}])     
+            tb1.add_row([u'损益最大回撤时间',"%(xxx)s"%{'xxx':d['timeList'][d['drawdownList'].index(min(d['drawdownList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['drawdownList'].index(min(d_l['drawdownList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['drawdownList'].index(min(d_s['drawdownList']))].strftime("%Y-%m-%d")}])      
+            tb1.add_row([u'损益最大回撤比',"%(xxx)s"%{'xxx':formatNumber(min(d['drawdownrateList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_l['drawdownrateList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_s['drawdownrateList']))}])  
+            tb1.add_row([u'损益最大回撤比时间',"%(xxx)s"%{'xxx':d['timeList'][d['drawdownrateList'].index(min(d['drawdownrateList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['drawdownrateList'].index(min(d_l['drawdownrateList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['drawdownrateList'].index(min(d_s['drawdownrateList']))].strftime("%Y-%m-%d")}])     
+        if d_l['totalResult'] ==0:
+            tb1.add_row([u'损益最大回撤',"%(xxx)s"%{'xxx':formatNumber(min(d['drawdownList']))},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(min(d_s['drawdownList']))}])     
+            tb1.add_row([u'损益最大回撤时间',"%(xxx)s"%{'xxx':d['timeList'][d['drawdownList'].index(min(d['drawdownList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['drawdownList'].index(min(d_s['drawdownList']))].strftime("%Y-%m-%d")}])   
+            tb1.add_row([u'损益最大回撤比',"%(xxx)s"%{'xxx':formatNumber(min(d['drawdownrateList']))},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(min(d_s['drawdownrateList']))}])  
+            tb1.add_row([u'损益最大回撤比时间',"%(xxx)s"%{'xxx':d['timeList'][d['drawdownrateList'].index(min(d['drawdownrateList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['drawdownrateList'].index(min(d_s['drawdownrateList']))].strftime("%Y-%m-%d")}]) 
+        if d_s['totalResult'] ==0:  
+            tb1.add_row([u'损益最大回撤',"%(xxx)s"%{'xxx':formatNumber(min(d['drawdownList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_l['drawdownList']))},"%(xxx)s"%{'xxx':'---'}])     
+            tb1.add_row([u'损益最大回撤时间',"%(xxx)s"%{'xxx':d['timeList'][d['drawdownList'].index(min(d['drawdownList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['drawdownList'].index(min(d_l['drawdownList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':'---'}])     
+            tb1.add_row([u'损益最大回撤比',"%(xxx)s"%{'xxx':formatNumber(min(d['drawdownrateList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_l['drawdownrateList']))},"%(xxx)s"%{'xxx':'---'}])  
+            tb1.add_row([u'损益最大回撤比时间',"%(xxx)s"%{'xxx':d['timeList'][d['drawdownrateList'].index(min(d['drawdownrateList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['drawdownrateList'].index(min(d_l['drawdownrateList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':'---'}]) 
         
-
-        tb1.add_row([u'损益最大回撤',"%(xxx)s"%{'xxx':formatNumber(min(d['drawdownList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_l['drawdownList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_s['drawdownList']))}])     
-        tb1.add_row([u'损益最大回撤时间',"%(xxx)s"%{'xxx':d['timeList'][d['drawdownList'].index(min(d['drawdownList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['drawdownList'].index(min(d_l['drawdownList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['drawdownList'].index(min(d_s['drawdownList']))].strftime("%Y-%m-%d")}])      
-        tb1.add_row([u'损益最大回撤比',"%(xxx)s"%{'xxx':formatNumber(min(d['drawdownrateList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_l['drawdownrateList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_s['drawdownrateList']))}])  
-        tb1.add_row([u'损益最大回撤比时间',"%(xxx)s"%{'xxx':d['timeList'][d['drawdownrateList'].index(min(d['drawdownrateList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['drawdownrateList'].index(min(d_l['drawdownrateList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['drawdownrateList'].index(min(d_s['drawdownrateList']))].strftime("%Y-%m-%d")}]) 
+        
         tb1.add_row([u'权益最大回撤',"%(xxx)s"%{'xxx':formatNumber(result['maxDrawdown'])},"",""])    
         tb1.add_row([u'权益最大回撤时间',"%(xxx)s"%{'xxx':result['maxDrawdowndate']},"",""])            
         tb1.add_row([u'权益最大回撤比',"%(xxx)s"%{'xxx':formatNumber(result['maxDdPercent'])},"",""])    
-        tb1.add_row([u'权益最大回撤比时间',"%(xxx)s"%{'xxx':result['maxDdPercentdate']},"",""])             
+        tb1.add_row([u'权益最大回撤比时间',"%(xxx)s"%{'xxx':result['maxDdPercentdate']},"",""])              
         
         
         tb1.reversesort = True        
@@ -2254,9 +2308,12 @@ def optimize(strategyClass, setting, targetName,
     
     
     df = engine.calculateDailyResult()
+    
     if len(df) == 0:
         return (str(setting), 0,{},{},setting)  
     df, d = engine.calculateDailyStatistics(df)
+    
+  
     ###任建军添加
     d1= engine.calculateBacktestingResultForWH()
     ###任建军添加

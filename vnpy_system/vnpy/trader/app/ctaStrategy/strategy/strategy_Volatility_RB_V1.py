@@ -83,7 +83,7 @@ class strategy_Volatility_RB_V1(CtaTemplate):
     SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
     
     # 多空判断
-    Trend_DAYS    = 365         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    Trend_DAYS    = 380         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
     ma            = 20
     
     # 多空参数系数
@@ -166,8 +166,8 @@ class strategy_Volatility_RB_V1(CtaTemplate):
         self.bg = BarGenerator(self.onBar)
         self.am = ArrayManager(self.initDays)
         
-        self.strategyStartpos                =1501#1890      
-        self.strategyEndpos                  =2463        
+        self.strategyStartpos                =678#1501#1890      
+        self.strategyEndpos                  =2479        
         self.all_bar                         =[]     
         self.SP_style                        =0000 
         self.BP_style                        =0000 
@@ -327,7 +327,7 @@ class strategy_Volatility_RB_V1(CtaTemplate):
             self.putEvent()            
             return            
         
-        #if bar.date=='20150629' and self.SK_A_FLAOT_PROFIT_ALL_RATIO>1.84:
+        #if bar.date=='20190514':
         #    print bar.date
         #    print bar.close
             
@@ -448,7 +448,7 @@ class strategy_Volatility_RB_V1(CtaTemplate):
         #条件1：保证金亏损 
         BP_Condition_1   = False
         if self.pos == -1:
-            A_PRICE_SP         =  self.SKPRICE+self.SK_A_LOSS_SP/self.A_WEIGHT         
+            A_PRICE_SP         =  self.SKPRICE+(self.SK_A_LOSS_SP*self.SK_A_LOSS_SP_RATIO_)/self.A_WEIGHT         
             BP_Condition_1     =  bar.close>A_PRICE_SP  
             if BP_Condition_1:
                 self.BP_style  = self.BP_style | 8 #1000   

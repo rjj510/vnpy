@@ -10,7 +10,6 @@ from __future__ import print_function
 from datetime import datetime, timedelta
 from collections import OrderedDict
 from itertools import product
-from backports.functools_lru_cache import lru_cache
 import multiprocessing
 import copy
 
@@ -23,13 +22,6 @@ from vnpy.rpc import RpcClient, RpcServer, RemoteException
 import prettytable as pt
 import sys
 import os
-
-from deap import creator, base, tools, algorithms
-creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-creator.create("Individual", list, fitness=creator.FitnessMax)
-import random
-
-from time import time
 
 # 如果安装了seaborn则设置为白色风格
 try:
@@ -71,7 +63,6 @@ class BacktestingEngine(object):
         
         self.outputshow = True      # outputshow是否显示
         
-        self.strategy_class_ga=None
         self.strategy = None        # 回测策略
         self.mode = self.BAR_MODE   # 回测模式，默认为K线
         
@@ -510,12 +501,7 @@ class BacktestingEngine(object):
     #------------------------------------------------
     # 策略接口相关
     #------------------------------------------------      
-    
-    #----------------------------------------------------------------------
-    def add_strategy(self, strategy_class, setting):
-        """"""
-        self.strategy_class_ga = strategy_class
-        self.strategy = strategy_class(self, setting)
+
     #----------------------------------------------------------------------
     def sendOrder(self, vtSymbol, orderType, price, volume, strategy):
         """发单"""
@@ -1156,160 +1142,6 @@ class BacktestingEngine(object):
             
         return resultList
         
-    #----------------------------------------------------------------------
-    def run_ga_optimization(self, optimization_setting, population_size=100, ngen_size=30, output=True):
-        """遗传算法回测优化"""
-        # 主要步骤
-        # 1）种群初始化 
-        #    我们需要首先通过随机生成的方式来创造一个种群，一般该种群的数量为100~500，
-        #    这里我们采用二进制将一个染色体(解)编码为基因型。随后用进制转化，将二进制
-        #    的基因型转化成十进制的表现型。
-        # 2）适应度计算(种群评估) 
-        #    这里我们直接将目标函数值作为个体的适应度。
-        # 3）选择(复制)操作
-        #    根据种群中个体的适应度大小，通过轮盘赌等方
-        #    式将适应度高的个体从当前种群中选择出来。其
-        #    中轮盘赌即是与适应度成正比的概率来确定各个
-        #    个体遗传到下一代群体中的数量。
-        # 4）交叉(交配)运算
-        #    该步骤是遗传算法中产生新的个体的主要操作过程，
-        #    它用一定的交配概率阈值(pc，一般是0.4到0.99)来控制是否采取单点交叉，多点交叉
-        #    等方式生成新的交叉个体
-        # 5）变异运算 
-        #    该步骤是产生新的个体的另一种操作。一般先随机产生变异点，
-        #    再根据变异概率阈值(pm,一般是0.0001到0.1)将变异点的原有基因取反。
-        # 6）终止判断
-        #    如果满足条件(迭代次数，一般是200~500)则终止算法，否则返回step2。
-        
-        
-        # Get optimization setting and target
-        settings = optimization_setting.generate_setting_ga()
-        target_name = optimization_setting.target_name
-
-        if not settings:
-            self.output("优化参数组合为空，请检查")
-            return
-
-        if not target_name:
-            self.output("优化目标未设置，请检查")
-            return
-
-        # Define parameter generation function
-        def generate_parameter():
-            """"""
-            return random.choice(settings)
-        
-        def mutate_individual(individual, indpb):
-            """"""
-            size = len(individual)
-            paramlist = generate_parameter()
-            for i in range(size):
-                if random.random() < indpb:
-                    individual[i] = paramlist[i]
-            return individual,
-
-        # Create ga object function
-        global ga_target_name
-        global ga_strategy_class
-        global ga_setting
-        global ga_vt_symbol
-        global ga_interval
-        global ga_start
-        global ga_rate
-        global ga_slippage
-        global ga_size
-        global ga_pricetick
-        global ga_capital
-        global ga_end
-        global ga_mode
-
-        ga_target_name = target_name
-        ga_strategy_class = self.strategy_class_ga
-        ga_setting = settings[0]
-        ga_vt_symbol = self.symbol
-        ga_interval = self.dbName
-        ga_start = self.startDate
-        ga_rate = self.rate
-        ga_slippage = self.slippage
-        ga_size = self.size
-        ga_pricetick = self.priceTick
-        ga_capital = self.capital
-        ga_end = self.endDate
-        ga_mode = self.mode
-                
-        # Set up genetic algorithem
-        toolbox = base.Toolbox() 
-        toolbox.register("individual", tools.initIterate, creator.Individual, generate_parameter)                          
-        toolbox.register("population", tools.initRepeat, list, toolbox.individual)                                            
-        toolbox.register("mate", tools.cxTwoPoint)                                               
-        toolbox.register("mutate", mutate_individual, indpb=1)    
-        # 实际调用就是把之前 individual 的list中10个随机数，算出来随机数求和。
-        toolbox.register("evaluate", ga_optimize)                                                
-        toolbox.register("select", tools.selNSGA2)       
-
-        total_size = len(settings)
-        pop_size = population_size                      # number of individuals in each generation 每一代种群个体数量
-        lambda_ = pop_size                              # number of children to produce at each generation 每代人生产的孩子数量
-        mu = int(pop_size * 0.8)                        # number of individuals to select for the next generation 为下一代选择的人数
-
-        cxpb = 0.95         # probability that an offspring is produced by crossover    后代由交叉产生的概率
-        mutpb = 1 - cxpb    # probability that an offspring is produced by mutation     后代由突变产生的概率
-        ngen = ngen_size    # number of generation                                      进行多少代繁殖筛选
-                
-        # 1）种群初始化 
-        #    我们需首先通过生成的方式来创造一个种群
-        pop = toolbox.population(pop_size)      
-        hof = tools.ParetoFront()               # end result of pareto front 帕托前言分析最后的结果
-
-        stats = tools.Statistics(lambda ind: ind.fitness.values)
-        np.set_printoptions(suppress=True)
-        stats.register("mean", np.mean, axis=0)
-        stats.register("std", np.std, axis=0)
-        stats.register("min", np.min, axis=0)
-        stats.register("max", np.max, axis=0)
-
-        # Multiprocessing is not supported yet.
-        
-        #pool = multiprocessing.Pool(multiprocessing.cpu_count())
-        #toolbox.register("map", pool.map)
-
-        # Run ga optimization
-                    
-        print ("参数优化空间：",total_size)
-        print("每代族群总数：",pop_size)
-        print("优良筛选个数：",mu)
-        print("迭代次数：",ngen)
-        print("交叉概率：",cxpb )
-        print("突变概率：",mutpb )
-
-        start = time()
-
-        algorithms.eaMuPlusLambda(
-            pop, 
-            toolbox, 
-            mu, 
-            lambda_, 
-            cxpb, 
-            mutpb, 
-            ngen, 
-            stats,
-            halloffame=hof
-        )    
-        
-        end = time()
-        cost = int((end - start))
-
-        self.output("遗传算法优化完成，耗时{cost}秒")
-        
-        # Return result list
-        results = []
-
-        for parameter_values in hof:
-            setting = dict(parameter_values)
-            target_value = ga_optimize(parameter_values)[0]
-            results.append((setting, target_value, {}))
-        
-        return results        
     #----------------------------------------------------------------------
     def updateDailyClose(self, dt, price):
         """更新每日收盘价"""
@@ -2295,10 +2127,6 @@ class OptimizationSetting(object):
         self.greater_than_equal=[]  #[['x','y'],['a','b']]  'x' >= 'y' , 'a' >= 'b'
         self.less_than_equal=[]     #[['x','y'],['a','b']]  'x' <= 'y' , 'a' <= 'b'
         
-    
-        self.params = {}      
-        self.target_name = ""        
-        
     #----------------------------------------------------------------------
     def addParameter(self, name, start, end=None, step=None):
         """增加优化参数"""
@@ -2397,88 +2225,9 @@ class OptimizationSetting(object):
     #----------------------------------------------------------------------
     def setOptimizeTarget(self, target):
         """设置优化目标字段"""
-        self.optimizeTarget = target 
-    #----------------------------------------------------------------------
-    def generate_setting(self):
-        """"""
-        keys = self.params.keys()
-        values = self.params.values()
-        products = list(product(*values))
+        self.optimizeTarget = target
 
-        settings = []
-        for p in products:
-            setting = dict(zip(keys, p))
-            settings.append(setting)
 
-        return settings
-    
-    def generate_setting_ga(self):
-        """""" 
-        settings_ga = []
-        settings = self.generate_setting()     
-        for d in settings:            
-            param = [tuple(i) for i in d.items()]
-            settings_ga.append(param)
-        return settings_ga
-
-class OptimizationSetting_GA(object):
-    """
-    Setting for runnning optimization.
-    """
-
-    def __init__(self):
-        """"""
-        self.params = {}
-        self.target_name = ""
-
-    def add_parameter(self,name,start,end,step):
-        """"""
-        if not end and not step:
-            self.params[name] = [start]
-            return
-
-        if start >= end:
-            print("参数优化起始点必须小于终止点")
-            return
-
-        if step <= 0:
-            print("参数优化步进必须大于0")
-            return
-
-        value = start
-        value_list = []
-
-        while value <= end:
-            value_list.append(value)
-            value += step
-
-        self.params[name] = value_list
-
-    def set_target(self, target_name):
-        """"""
-        self.target_name = target_name
-
-    def generate_setting(self):
-        """"""
-        keys = self.params.keys()
-        values = self.params.values()
-        products = list(product(*values))
-
-        settings = []
-        for p in products:
-            setting = dict(zip(keys, p))
-            settings.append(setting)
-
-        return settings
-    
-    def generate_setting_ga(self):
-        """""" 
-        settings_ga = []
-        settings = self.generate_setting()     
-        for d in settings:            
-            param = [tuple(i) for i in d.items()]
-            settings_ga.append(param)
-        return settings_ga
 ########################################################################
 class HistoryDataServer(RpcServer):
     """历史数据缓存服务器"""
@@ -2583,85 +2332,4 @@ def optimize(strategyClass, setting, targetName,
     ###任建军添加
     return (str(setting), targetValue,d,d1,setting)    
     ###任建军添加
-#----------------------------------------------------------------------    
-def optimize_ga(target_name,strategy_class,setting,vt_symbol,interval,start,rate ,slippage,size,pricetick,capital,end,mode ):
-    """
-    Function for running in multiprocessing.pool
-    """
-    engine = BacktestingEngine()
     
-    engine.setBacktestingMode(mode)
-    engine.setStartDate(start)
-    engine.setEndDate(end)
-    engine.setSlippage(slippage)
-    engine.setRate(rate)
-    engine.setSize(size)
-    engine.setPriceTick(pricetick)
-    engine.setDatabase(interval,vt_symbol)
-    engine.setCapital(capital)
-    engine.initStrategy(strategy_class, setting)
-    engine.runBacktesting()
-    
-    #engine.calculate_result()
-    #statistics = engine.calculate_statistics(output=False)
-
-    df = engine.calculateDailyResult()
-
-    if len(df) == 0:
-        return (str(setting), 0,{},{},setting)  
-    df, d = engine.calculateDailyStatistics(df)
-
-
-    ###任建军添加
-    d1= engine.calculateBacktestingResultForWH()
-    ###任建军添加
-    try:
-        targetValue = d1[target_name]
-    except KeyError:
-        targetValue = 0          
-    #原始代码    
-    #return (str(setting), targetValue,d)    
-    ###任建军添加
-    return (str(setting),targetValue,d,d1,setting)    
-    ###任建军添加
-count = 0    
-@lru_cache(maxsize=1000000)
-def _ga_optimize(parameter_values):
-    """"""
-    global count    
-    count= count+1
-    print (count) 
-    setting = dict(parameter_values)                     
-    result = optimize_ga(
-        ga_target_name,
-        ga_strategy_class,
-        setting,
-        ga_vt_symbol,
-        ga_interval,
-        ga_start,
-        ga_rate,
-        ga_slippage,
-        ga_size,
-        ga_pricetick,
-        ga_capital,
-        ga_end,
-        ga_mode
-    )
-    return (result[1],)
-def ga_optimize(parameter_values):
-    """"""
-    return _ga_optimize(tuple(parameter_values))    
-# GA related global value
-ga_end = None
-ga_mode = None
-ga_target_name = None
-ga_strategy_class = None
-ga_setting = None
-ga_vt_symbol = None
-ga_interval = None
-ga_start = None
-ga_rate = None
-ga_slippage = None
-ga_size = None
-ga_pricetick = None
-ga_capital = None

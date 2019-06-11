@@ -216,7 +216,7 @@ class ShortTermStrategy(CtaTemplate):
         if self.tradeday > 0:
             self.tradeday = self.tradeday + 1
             
-        #if bar.date=='20190408':
+        #if bar.date=='20190529':
         #    print bar.date        
         ########################################################################################       
         #------------------------ 1 、 做多买开条件-----------------------------------------------        

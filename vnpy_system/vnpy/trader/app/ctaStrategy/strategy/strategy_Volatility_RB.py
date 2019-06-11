@@ -199,8 +199,8 @@ class strategy_Volatility_RB(CtaTemplate):
             self.putEvent()            
             return            
         
-        if bar.date=='20190509':
-            print bar.date
+        #if bar.date=='20190509':
+        #    print bar.date
             
         if self.tradeday>0:
             self.tradeday = self.tradeday+1

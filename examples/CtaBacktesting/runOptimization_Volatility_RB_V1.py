@@ -1,5 +1,5 @@
 # encoding: UTF-8
-'''
+
 from __future__ import division
 from __future__ import print_function
 from vnpy.trader.app.ctaStrategy.ctaBacktesting import BacktestingEngine, MINUTE_DB_NAME, OptimizationSetting,DAILY_DB_NAME
@@ -31,9 +31,41 @@ if __name__ == '__main__':
     setting = OptimizationSetting()                 # 新一个优化任务设置对象
     setting.setOptimizeTarget('maxDdPercent')     
                 
+    setting.addParameter('TEMP',28)     
     
+    #setting.addParameter('BK_A_LOSS_SP',500,1800,100)     
+    #setting.addParameter('SK_A_LOSS_SP',500,1800,100)  
+    
+    #setting.addParameter('BK_BEFORE_DAY',1,4,1)     
+    #setting.addParameter('SP_BEFORE_DAY',1,4,1)   
+    
+    #setting.addParameter('SK_BEFORE_DAY',1,4,1)     
+    #setting.addParameter('BP_BEFORE_DAY',1,4,1)     
+    
+    #setting.addParameter('BK_Volatility',0.1,1.5,0.1)     
+    #setting.addParameter('SP_Volatility',0.1,1.5,0.1)  
+    
+    #setting.addParameter('SK_Volatility',0.1,1.5,0.1)      
+    #setting.addParameter('BP_Volatility',0.1,1.5,0.1)  
 
-    setting.addParameter('SK_A_LOSS_SP_RATIO'   ,0.2,1.0,0.05) 
+    #setting.addParameter('BK_A_FLAOT_PROFIT_ALL',300,1800,100)     
+    #setting.addParameter('SK_A_FLAOT_PROFIT_ALL',300,1800,100)      
+    
+    #setting.addParameter('Trend_DAYS',100,400,10)      
+    #setting.addParameter('ma',13,34,2)        
+    
+    #setting.addParameter('BK_A_LOSS_SP_RATIO',0.3,1.3,0.1)      
+    #setting.addParameter('SK_A_LOSS_SP_RATIO',0.3,1.3,0.1)      
+
+    #setting.addParameter('BK_Volatility_RATIO',0.3,1.3,0.1)         
+    #setting.addParameter('SP_Volatility_RATIO',0.3,1.3,0.1)      
+    
+    #setting.addParameter('SK_Volatility_RATIO',0.3,1.3,0.1)        
+    #setting.addParameter('BP_Volatility_RATIO',0.3,1.3,0.1)     
+    
+    #setting.addParameter('BK_A_FLAOT_PROFIT_ALL_RATIO',0.7,2,0.1)      
+    #setting.addParameter('SK_A_FLAOT_PROFIT_ALL_RATIO',0.7,2,0.1)      
+            
             
     # 性能测试环境：I7-3770，主频3.4G, 8核心，内存16G，Windows 7 专业版
     # 测试时还跑着一堆其他的程序，性能仅供参考
@@ -79,7 +111,25 @@ if __name__ == "__main__":
 
     setting = OptimizationSetting_GA()
     setting.set_target('profitrate') 
-    setting.add_parameter('Trend_DAYS'   ,100,500,2) 
-    setting.add_parameter('ma'   ,10,30,1) 
+    
+    #setting.add_parameter('BK_A_LOSS_SP'   ,1400) 
+    setting.add_parameter('BK_Volatility'   ,0.5,1.0,0.1) 
+    setting.add_parameter('SP_Volatility'   ,0.5,1.0,0.1) 
+    #setting.add_parameter('BK_A_FLAOT_PROFIT_ALL'   ,600) 
+    
+    #setting.add_parameter('SK_A_LOSS_SP'   ,900) 
+    setting.add_parameter('SK_Volatility'   ,0.3,1.5,0.1) 
+    setting.add_parameter('BP_Volatility'   ,0.3,1.5,0.1) 
+    setting.add_parameter('SK_BEFORE_DAY'   ,3,5,1) 
+    setting.add_parameter('BP_BEFORE_DAY'   ,3,5,1) 
+    #setting.add_parameter('SK_A_FLAOT_PROFIT_ALL'   ,1000)   
+    
+
+    #setting.add_parameter('Trend_DAYS'      ,380) 
+    #setting.add_parameter('ma'              ,16)     
+    
+
+    setting.add_parameter('SK_A_FLAOT_PROFIT_ALL_RATIO' ,1,2.5,0.1)        
 
     print (engine.run_ga_optimization(setting))
+'''

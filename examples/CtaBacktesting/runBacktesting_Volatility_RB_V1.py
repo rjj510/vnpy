@@ -36,7 +36,7 @@ def calculateDailyResult_init(showtrade,capital,size,paralist):
     engine.initStrategy(VRB1.strategy_Volatility_RB_V1, d)
     engine.strategy.showtrade=showtrade
     engine.strategy.A_WEIGHT=size
-    engine.strategy.setparalist(paralist)
+    #engine.strategy.setparalist(paralist)
     #engine.strategy.LongOrShort=long_or_short
     return engine
 

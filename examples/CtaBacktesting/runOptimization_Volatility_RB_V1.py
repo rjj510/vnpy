@@ -31,7 +31,7 @@ if __name__ == '__main__':
     setting = OptimizationSetting()                 # 新一个优化任务设置对象
     setting.setOptimizeTarget('maxDdPercent')     
                 
-    setting.addParameter('TEMP',28)     
+    setting.addParameter('TEMP',1,28,1)     
     
     #setting.addParameter('BK_A_LOSS_SP',500,1800,100)     
     #setting.addParameter('SK_A_LOSS_SP',500,1800,100)  

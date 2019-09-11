@@ -60,7 +60,7 @@ def calculateDailyResult_to_CSV(engine,start_date,start_pos,end_date,end_pos,csv
     df= engine.calculateDailyResult_to_CSV(csvfile)    
   
     # 显示回测结果  用于文华的ctrl+G的快捷键功能
-    print(HYNAME+u" 波幅率交易系统")
+    print(HYNAME+u" 波幅率交易系统V1")
     print('start date:'+start_date)
     print('end   date:'+end_date)      
     engine.showBacktestingResultLikeWH_V1(df)

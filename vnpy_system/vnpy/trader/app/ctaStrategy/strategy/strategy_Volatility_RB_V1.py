@@ -63,40 +63,509 @@ class strategy_Volatility_RB_V1(CtaTemplate):
     # 策略参数Trend_DAYS                   
     A_WEIGHT      = 10       #{每手吨数                }                 
     A_BZJ         = 0.14     #{保证金参数              }
-    #--------------以下是可以优化的策略----------------------------
+    #--------------以下是可以优化的策略----------------------------    
+    #方案二：不同时间段用不同参数体系。
+    '''
+    # self.TEMP == 1  2011年01月	---  2012年12月
+    # 做多的优化参数优化期全部数据星期[0,1,2,3,4]
+    BK_A_LOSS_SP     = 600      #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 1.0      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.1      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 2        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  } 
+    # 做空的优化参数优化期全部数据星期[0,1,2,3,4]
+    SK_A_LOSS_SP     = 600      #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.7      #{卖开的开盘价波幅   用于卖开}  
+    BP_Volatility    = 0.4      #{买平的成交价波幅   用于买平}  
+    SK_BEFORE_DAY    = 4        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} 
+    BP_BEFORE_DAY    = 2        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} 
+    SK_A_FLAOT_PROFIT_ALL=800   #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 130         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    ma               = 31
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  
+    BP_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}
+    '''
     
-    # 做多的优化参数优化期全部数据 [星期1,2,3]
+    
+    '''
+    #self.TEMP == 2 2011年07月	2013年06月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3,4]
+    BK_A_LOSS_SP     = 800     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 1.0      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.6      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 2        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=800   #{最佳浮盈                  } 
+    # 做空的优化参数优化期最近数据 星期[0,1,2,3,4]
+    SK_A_LOSS_SP     = 1000     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.7      #{卖开的开盘价波幅   用于卖开}  
+    BP_Volatility    = 0.2      #{买平的成交价波幅   用于买平}  
+    SK_BEFORE_DAY    = 4        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} 
+    BP_BEFORE_DAY    = 3        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} 
+    SK_A_FLAOT_PROFIT_ALL=900   #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 175      #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    ma               = 23
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  
+    BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}
+    '''
+    
+    '''
+    #self.TEMP == 3 2012年01月	2013年12月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
     BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
     BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
     SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
     BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
     SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
-    BK_A_FLAOT_PROFIT_ALL=500   #{最佳浮盈                  } 
-
-    
-    # 做空的优化参数优化期最近数据 [星期2,3,4]
-    SK_A_LOSS_SP     = 1050     #{保证金亏损金额     用于买平}  
-    SK_Volatility    = 0.3      #{卖开的开盘价波幅   用于卖开}  
-    BP_Volatility    = 0.9      #{买平的成交价波幅   用于买平}  
-    SK_BEFORE_DAY    = 1        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} 
-    BP_BEFORE_DAY    = 1        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=600   #{最佳浮盈                  } 
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 900     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.7      #{卖开的开盘价波幅   用于卖开}  
+    BP_Volatility    = 0.3      #{买平的成交价波幅   用于买平}  
+    SK_BEFORE_DAY    = 4        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} 
+    BP_BEFORE_DAY    = 3        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} 
     SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
-    
     # 多空判断
-    Trend_DAYS    = 380         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
-    ma            = 20
-    
-    # 多空参数系数
+    Trend_DAYS       = 380         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    ma               = 16
+    # 多参数系数
     BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
     BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
     SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
     BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
-    
+    # 空参数系数
     SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
     SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  
     BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}
-    SK_A_FLAOT_PROFIT_ALL_RATIO= 2.2#{当CLOSE<MA均线的时候, 放大}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}
+    '''
     
+    
+    '''
+    # self.TEMP == 4 2012年07月	2014年06月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
+    BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=600   #{最佳浮盈                  } 
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 900     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.8      #{卖开的开盘价波幅   用于卖开}  ###################
+    BP_Volatility    = 0.4      #{买平的成交价波幅   用于买平}  ###################
+    SK_BEFORE_DAY    = 4        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} 
+    BP_BEFORE_DAY    = 3        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} 
+    SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 320      #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE } ######################
+    ma               = 15       # #############################
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  
+    BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}
+    '''
+    
+    '''
+    # self.TEMP == 5 2013年01月	2014年12月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
+    BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=600   #{最佳浮盈                  } 
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 900     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.5      #{卖开的开盘价波幅   用于卖开}  ###################
+    BP_Volatility    = 1.1      #{买平的成交价波幅   用于买平}  ###################
+    SK_BEFORE_DAY    = 4        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} 
+    BP_BEFORE_DAY    = 3        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} 
+    SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 320      #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE } ######################
+    ma               = 15       # #############################
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  
+    BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}    
+    '''
+    
+    '''
+    # self.TEMP == 6 2013年07月	2015年06月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
+    BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=600   #{最佳浮盈                  } 
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 900     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.6      #{卖开的开盘价波幅   用于卖开}###########################
+    BP_Volatility    = 0.5      #{买平的成交价波幅   用于买平}###########################  
+    SK_BEFORE_DAY    = 4        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} 
+    BP_BEFORE_DAY    = 3        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} 
+    SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 320         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    ma               = 16
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  
+    BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}
+    '''
+    
+    '''
+    # self.TEMP == 7 2014年01月	2015年12月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
+    BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=600   #{最佳浮盈                  } 
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 900     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.3      #{卖开的开盘价波幅   用于卖开}  
+    BP_Volatility    = 0.9      #{买平的成交价波幅   用于买平}  
+    SK_BEFORE_DAY    = 1        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} ###########4
+    BP_BEFORE_DAY    = 4        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} ###########3
+    SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 380         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    ma               = 16
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  ##################
+    BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}    ##################
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}
+    '''
+    
+    '''
+    # self.TEMP == 8 2014年07月	2016年06月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
+    BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=600   #{最佳浮盈                  } 
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 900     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.9      #{卖开的开盘价波幅   用于卖开} ######################0.3
+    BP_Volatility    = 0.5      #{买平的成交价波幅   用于买平} ######################0.9
+    SK_BEFORE_DAY    = 4        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} 
+    BP_BEFORE_DAY    = 3        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} 
+    SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 380         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    ma               = 16
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  
+    BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}
+    '''
+    
+    '''
+    # self.TEMP == 9 2015年01月	2016年12月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
+    BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=500   #{最佳浮盈                  } ###########600
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 900     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.3      #{卖开的开盘价波幅   用于卖开}  
+    BP_Volatility    = 0.9      #{买平的成交价波幅   用于买平}  
+    SK_BEFORE_DAY    = 4        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日}
+    BP_BEFORE_DAY    = 3        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日}
+    SK_A_FLAOT_PROFIT_ALL=1200  #{最佳浮盈                  }   ##############1000       
+    # 多空判断
+    Trend_DAYS       = 300         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }380
+    ma               = 15       #16
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 1.1#{当CLOSE>MA均线的时候, 放大}############0.85
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 0.5    #{当CLOSE>MA均线的时候，缩小} ###############1
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  
+    BP_Volatility_RATIO= 0.45   #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}
+    '''
+     
+    '''   
+    #self.TEMP == 10 2015年07月	2017年06月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
+    BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=600   #{最佳浮盈                  } 
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 900     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.3      #{卖开的开盘价波幅   用于卖开}  
+    BP_Volatility    = 0.9      #{买平的成交价波幅   用于买平}  
+    SK_BEFORE_DAY    = 4        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日}  #####4
+    BP_BEFORE_DAY    = 2        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日}  #####3
+    SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 380         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    ma               = 16
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.9#{当CLOSE>MA均线的时候, 放大}#########0.85
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  
+    BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.8#{当CLOSE<MA均线的时候, 放大}#########1.9
+    '''
+    
+    '''
+    #self.TEMP == 11 2016年01月	2017年12月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
+    BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=600   #{最佳浮盈                  } 
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 900     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.3      #{卖开的开盘价波幅   用于卖开}  
+    BP_Volatility    = 0.9      #{买平的成交价波幅   用于买平}  
+    SK_BEFORE_DAY    = 4        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} 
+    BP_BEFORE_DAY    = 2        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} ###################3
+    SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 200         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }#380
+    ma               = 33           #16
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.7#{当CLOSE>MA均线的时候, 放大}#########0.85
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 0.5      #{当CLOSE>MA均线的时候，缩小}  ######1
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  
+    BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}   
+    '''
+    
+    '''
+    #self.TEMP == 12 2016年07月	2018年06月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
+    BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=600   #{最佳浮盈                  } 
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 900     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.3      #{卖开的开盘价波幅   用于卖开}  
+    BP_Volatility    = 0.9      #{买平的成交价波幅   用于买平}  
+    SK_BEFORE_DAY    = 3        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} ########4
+    BP_BEFORE_DAY    = 1        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} ########3
+    SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 380         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    ma               = 16
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  
+    BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}
+    '''
+    
+    
+    '''
+    #self.TEMP == 13 2017年01月	2018年12月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
+    BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=600   #{最佳浮盈                  } 
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 900     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.3      #{卖开的开盘价波幅   用于卖开}  
+    BP_Volatility    = 0.9      #{买平的成交价波幅   用于买平}  
+    SK_BEFORE_DAY    = 4        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} 
+    BP_BEFORE_DAY    = 3        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} 
+    SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 380         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    ma               = 16
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  
+    BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}
+    '''
+    
+    '''    
+    #self.TEMP == 14 2017年07月	2019年06月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
+    BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=400   #{最佳浮盈                  } ########400
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 900     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.3      #{卖开的开盘价波幅   用于卖开}  
+    BP_Volatility    = 0.9      #{买平的成交价波幅   用于买平}  
+    SK_BEFORE_DAY    = 2        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} #######4
+    BP_BEFORE_DAY    = 3        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} #######3
+    SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 380         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    ma               = 16
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 0.9      #{当CLOSE>MA均线的时候, 缩小}  #############1
+    SP_Volatility_RATIO= 1.3     #{当CLOSE<MA均线的时候, 缩小} #####################1
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小} 
+    BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}
+    '''
+    
+    #'''
+    #self.TEMP == 29 2018年01月	2019年12月
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
+    BK_A_LOSS_SP     = 1200     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 0.4      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.8      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 2        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=700   #{最佳浮盈                  } 
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 500     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.7      #{卖开的开盘价波幅   用于卖开}  
+    BP_Volatility    = 0.8      #{买平的成交价波幅   用于买平}  
+    SK_BEFORE_DAY    = 3        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} 
+    BP_BEFORE_DAY    = 1        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} 
+    SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 380         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    ma               = 13
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 0.8      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 0.9      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
+    SK_Volatility_RATIO= 1.3    #{当CLOSE<MA均线的时候, 缩小}  
+    BP_Volatility_RATIO= 0.5    #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}
+    #'''
+        
+    #方案一：全部时间段用一套参数体系
+    '''
+    # 做多的优化参数优化期全部数据 星期[0,1,2,3]
+    BK_A_LOSS_SP     = 1400     #{保证金亏损金额     用于卖平}  
+    BK_Volatility    = 0.7      #{买开的开盘价波幅   用于买开}  
+    SP_Volatility    = 0.9      #{卖平的成交价波幅   用于卖平}  
+    BK_BEFORE_DAY    = 1        #{买开N日中最高价-买开N日中的最低价 买开N=1代表当日} 
+    SP_BEFORE_DAY    = 1        #{卖平M日中最高价-卖平M日中的最低价 卖平M=1代表当日} 
+    BK_A_FLAOT_PROFIT_ALL=600   #{最佳浮盈                  } 
+    # 做空的优化参数优化期最近数据 星期[1,2,3,4]
+    SK_A_LOSS_SP     = 900     #{保证金亏损金额     用于买平}  
+    SK_Volatility    = 0.3      #{卖开的开盘价波幅   用于卖开}  
+    BP_Volatility    = 0.9      #{买平的成交价波幅   用于买平}  
+    SK_BEFORE_DAY    = 4        #{卖开N日中最高价-卖开N日中的最低价 卖开N=1代表当日} 
+    BP_BEFORE_DAY    = 3        #{买平M日中最高价-买平M日中的最低价 买平M=1代表当日} 
+    SK_A_FLAOT_PROFIT_ALL=1000  #{最佳浮盈                  }       
+    # 多空判断
+    Trend_DAYS       = 380         #{做多：当前CLOSE大于Trend_DAYS天前的CLOSE ; 做空：当前CLOSE小于Trend_DAYS天前的CLOSE }
+    ma               = 16
+    # 多参数系数
+    BK_A_LOSS_SP_RATIO = 1      #{当CLOSE<MA均线的时候，缩小}
+    BK_Volatility_RATIO= 1      #{当CLOSE>MA均线的时候, 缩小}  
+    SP_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}
+    BK_A_FLAOT_PROFIT_ALL_RATIO= 0.85#{当CLOSE>MA均线的时候, 放大}
+    # 空参数系数
+    SK_A_LOSS_SP_RATIO = 1      #{当CLOSE>MA均线的时候，缩小}
+    SK_Volatility_RATIO= 1      #{当CLOSE<MA均线的时候, 缩小}  
+    BP_Volatility_RATIO= 0.45      #{当CLOSE>MA均线的时候, 缩小}
+    SK_A_FLAOT_PROFIT_ALL_RATIO= 1.9#{当CLOSE<MA均线的时候, 放大}
+    '''
+    
+    
+    TEMP      = 0 
     
     # 策略变量
     showtrade        = False  
@@ -127,7 +596,8 @@ class strategy_Volatility_RB_V1(CtaTemplate):
                  'SK_A_LOSS_SP_RATIO',
                  'SK_Volatility_RATIO',
                  'BP_Volatility_RATIO',
-                 'SK_A_FLAOT_PROFIT_ALL_RATIO']    
+                 'SK_A_FLAOT_PROFIT_ALL_RATIO',
+                 'TEMP']    
     
     # 变量列表，保存了变量的名称
     varList = ['inited',
@@ -151,7 +621,7 @@ class strategy_Volatility_RB_V1(CtaTemplate):
         self.SK_Volatility    = paralist[7]     
         self.BP_Volatility    = paralist[8]     
         self.SK_BEFORE_DAY    = paralist[9]        
-        self.BP_BEFORE_DAY    = paralist[10]        
+        self.BP_BEFORE_DAY    = paralist[10]  
         self.SK_A_FLAOT_PROFIT_ALL=paralist[11]  
         
         self.Trend_DAYS      = paralist[12]      
@@ -161,13 +631,105 @@ class strategy_Volatility_RB_V1(CtaTemplate):
     def __init__(self, ctaEngine, setting):
         """Constructor"""
         super(strategy_Volatility_RB_V1, self).__init__(ctaEngine, setting)
-    
+          
         self.initDays         = max(self.BK_BEFORE_DAY,self.SK_BEFORE_DAY)           # 初始化数据所用的天数        
         self.bg = BarGenerator(self.onBar)
         self.am = ArrayManager(self.initDays)
         
-        self.strategyStartpos                =678#1501#1890      
-        self.strategyEndpos                  =2479        
+        
+        if self.TEMP == 1:
+            self.strategyStartpos                =432      
+            self.strategyEndpos                  =918        
+        elif self.TEMP == 2:
+            self.strategyStartpos                =551      
+            self.strategyEndpos                  =1031     
+        elif self.TEMP == 3:
+            self.strategyStartpos                =676      
+            self.strategyEndpos                  =1157      
+        elif self.TEMP == 4:
+            self.strategyStartpos                =793      
+            self.strategyEndpos                  =1276      
+        elif self.TEMP == 5:
+            self.strategyStartpos                =919      
+            self.strategyEndpos                  =1401      
+        elif self.TEMP == 6:
+            self.strategyStartpos                =1032      
+            self.strategyEndpos                  =1520      
+        elif self.TEMP == 7:
+            self.strategyStartpos                =1157      
+            self.strategyEndpos                  =1645      
+        elif self.TEMP == 8:
+            self.strategyStartpos                =1276      
+            self.strategyEndpos                  =1765   
+        elif self.TEMP == 9:
+            self.strategyStartpos                =1402      
+            self.strategyEndpos                  =1889   
+        elif self.TEMP == 10:
+            self.strategyStartpos                =1521      
+            self.strategyEndpos                  =2008   
+        elif self.TEMP == 11:
+            self.strategyStartpos                =1646      
+            self.strategyEndpos                  =2134   
+        elif self.TEMP == 12:
+            self.strategyStartpos                =1766      
+            self.strategyEndpos                  =2252   
+        elif self.TEMP == 13:
+            self.strategyStartpos                =1890      
+            self.strategyEndpos                  =2376   
+        elif self.TEMP == 14:
+            self.strategyStartpos                =2009      
+            self.strategyEndpos                  =2494   
+        elif self.TEMP == 15:
+            self.strategyStartpos                =919      
+            self.strategyEndpos                  =1031   
+        elif self.TEMP == 16:
+            self.strategyStartpos                =1032      
+            self.strategyEndpos                  =1156   
+        elif self.TEMP == 17:
+            self.strategyStartpos                =1157      
+            self.strategyEndpos                  =1275   
+        elif self.TEMP == 18:
+            self.strategyStartpos                =1276      
+            self.strategyEndpos                  =1401   
+        elif self.TEMP == 19:
+            self.strategyStartpos                =1402      
+            self.strategyEndpos                  =1520   
+        elif self.TEMP == 20:
+            self.strategyStartpos                =1521      
+            self.strategyEndpos                  =1645   
+        elif self.TEMP == 21:
+            self.strategyStartpos                =1646      
+            self.strategyEndpos                  =1765   
+        elif self.TEMP == 22:
+            self.strategyStartpos                =1766      
+            self.strategyEndpos                  =1889   
+        elif self.TEMP == 23:
+            self.strategyStartpos                =1890      
+            self.strategyEndpos                  =2008   
+        elif self.TEMP == 24:
+            self.strategyStartpos                =2009      
+            self.strategyEndpos                  =2133   
+        elif self.TEMP == 25:
+            self.strategyStartpos                =2134      
+            self.strategyEndpos                  =2252   
+        elif self.TEMP == 26:
+            self.strategyStartpos                =2253      
+            self.strategyEndpos                  =2376   
+        elif self.TEMP == 27:
+            self.strategyStartpos                =2377      
+            self.strategyEndpos                  =2494   
+        elif self.TEMP == 28:
+            self.strategyStartpos                =2495      
+            self.strategyEndpos                  =2620   
+        elif self.TEMP == 29:
+            self.strategyStartpos                =2134      
+            self.strategyEndpos                  =2620   
+        else:
+            self.strategyStartpos                =1889      
+            self.strategyEndpos                  =2497   
+        
+        
+            
         self.all_bar                         =[]     
         self.SP_style                        =0000 
         self.BP_style                        =0000 
@@ -181,10 +743,14 @@ class strategy_Volatility_RB_V1(CtaTemplate):
         # 策略类中的这些可变对象属性可以选择不写，全都放在__init__下面，写主要是为了阅读
         # 策略时方便（更多是个编程习惯的选择）
         self.BKWeekProfit                    =[0,0,0,0,0,0,0]
-        self.SKWeekProfit                    =[0,0,0,0,0,0,0]
-        self.LongBestday                     =[0,1,2,3,4]#[0,1,2]
-        self.ShortBestday                    =[0,1,2,3,4]#[1,2,3]
+        self.SKWeekProfit                    =[0,0,0,0,0,0,0]        
+        
+        self.LongBestday                     =[0,1,2,3,4]#[0,1,2,3]
+        self.ShortBestday                    =[0,1,2,3,4]#[1,2,3,4]
+        
         self.TrendStatus                     =2 # 0-做多 1-做空 2-数据收集期
+        self.BK_virtual_trade_day            =False #虚拟交易日
+        self.SK_virtual_trade_day            =False #虚拟交易日
         self.BK_Q_HIGH                            =Queue.Queue()
         self.BK_Q_HIGH.maxsize                    =self.BK_BEFORE_DAY       
         self.BK_Q_LOW                             =Queue.Queue()
@@ -195,6 +761,7 @@ class strategy_Volatility_RB_V1(CtaTemplate):
         self.SP_Q_HIGH.maxsize                    =self.SP_BEFORE_DAY       
         self.SP_Q_LOW                             =Queue.Queue()
         self.SP_Q_LOW.maxsize                     =self.SP_BEFORE_DAY      
+
 
         self.SK_Q_HIGH                            =Queue.Queue()
         self.SK_Q_HIGH.maxsize                    =self.SK_BEFORE_DAY       
@@ -239,6 +806,28 @@ class strategy_Volatility_RB_V1(CtaTemplate):
         """主力策略 今日收盘价加上今日波幅的某个比例，作为第二日买入的价格点。（4）"""
         self.all_bar.append(bar)  
         
+        am = self.am        
+        am.updateBar(bar)
+        if not am.inited:
+            return
+        
+        
+        #if bar.date=='20200114':
+        #    print bar.date
+        #    print bar.close
+        
+        
+        if len(self.all_bar)-1 > self.strategyEndpos :  
+            if self.pos == 1 and self.BK_virtual_trade_day == False:
+                self.sell(bar.close,1)
+            elif self.pos == -1 and self.SK_virtual_trade_day == False:
+                self.cover(bar.close,1)
+            return
+        
+        if len(self.all_bar)-1 < self.strategyStartpos :
+            self.putEvent()            
+            return              
+                
         if  self.BK_Q_HIGH.qsize() < self.BK_Q_HIGH.maxsize:
             self.BK_Q_HIGH.put(self.all_bar[-1].high)
         else:
@@ -294,19 +883,7 @@ class strategy_Volatility_RB_V1(CtaTemplate):
             
 
         
-        am = self.am        
-        am.updateBar(bar)
-        if not am.inited:
-            return
-        
-        if len(self.all_bar) > self.strategyEndpos+1 :  
-            '''
-            if self.pos == 1:
-                self.sell(bar.close,1)
-            elif self.pos == -1:
-                self.cover(bar.close,1)
-            '''
-            return
+
         
             
         # 这个出了一个大问题 -1代表的是取今天的数据，-2代表取前一天的数据
@@ -323,13 +900,7 @@ class strategy_Volatility_RB_V1(CtaTemplate):
         SK_CURDAYRANGE  = max(list(self.SK_Q_HIGH.queue)) - min(list(self.SK_Q_LOW.queue))  
         BP_CURDAYRANGE  = max(list(self.BP_Q_HIGH.queue)) - min(list(self.BP_Q_LOW.queue))    
                 
-        if len(self.all_bar) < self.strategyStartpos :
-            self.putEvent()            
-            return            
         
-        #if bar.date=='20190514':
-        #    print bar.date
-        #    print bar.close
             
         if self.tradeday!=0:
             self.tradeday = self.tradeday+1
@@ -417,6 +988,7 @@ class strategy_Volatility_RB_V1(CtaTemplate):
                 self.pos = self.pos+1
                 self.BKDATE = datetime.strptime(bar.date, "%Y%m%d") 
                 self.BKPRICE = bar.close
+                self.BK_virtual_trade_day =True
                 return 
             
         if (SP_Condition_1 or SP_Condition_2 or SP_Condition_3 ) and self.pos == 1 :    
@@ -427,6 +999,7 @@ class strategy_Volatility_RB_V1(CtaTemplate):
                 self.BKWeekProfit[self.BKDATE.weekday()]=self.BKWeekProfit[self.BKDATE.weekday()]+(bar.close- self.BKPRICE)*self.A_WEIGHT 
                 self.pos = self.pos-1
                 self.BKDATE = EMPTY_FLOAT_WH
+                self.BK_virtual_trade_day =False
                 '''
                 if self.showtrade: 
                     for each in self.BKWeekProfit:
@@ -477,6 +1050,7 @@ class strategy_Volatility_RB_V1(CtaTemplate):
                 self.pos = self.pos-1
                 self.SKDATE = datetime.strptime(bar.date, "%Y%m%d") 
                 self.SKPRICE = bar.close
+                self.SK_virtual_trade_day =True
                 return         
             
         if (BP_Condition_1 or BP_Condition_2 or BP_Condition_3 ) and self.pos == -1 :    
@@ -487,6 +1061,7 @@ class strategy_Volatility_RB_V1(CtaTemplate):
                 self.SKWeekProfit[self.SKDATE.weekday()]=self.SKWeekProfit[self.SKDATE.weekday()]+(self.SKPRICE - bar.close)*self.A_WEIGHT 
                 self.pos = self.pos+1
                 self.SKDATE = EMPTY_FLOAT_WH
+                self.SK_virtual_trade_day =False
                 
                 if self.showtrade: 
                     for each in self.SKWeekProfit:

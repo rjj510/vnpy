@@ -1070,11 +1070,10 @@ class BacktestingEngine(object):
                 #s = pd.Series([setting.values(),            float(0)    ,  float(0) ,  float(0)    ,    0     ,           0          ,    float(0)        ,float(0)         ,float(0)      , float(0)],\
                 #              index =         ['参数组'  , '累计收益率'  , '平均盈亏'  , '胜率'      , '交易次数', '平均盈利/平均亏损'   , '权益最大回撤'      ,'权益最大回撤比'  ,'损益最大回撤' ,'损益最大回撤比'])
             else:
-                s = pd.Series([setting,'%02.2f'%float(d['totalReturn']),'%02.2f'%float(d1['averagewininglosing']),'%02.2f'%float(d1['winningRate']),d['totalTradeCount'],'%02.2f'%float(d1['profitLossRatio']),'%02.2f'%float(d['maxDrawdown']),'%02.2f'%float(d['maxDdPercent']),'%02.2f'%float(min(d1['drawdownList'])),'%02.2f'%float(min(d1['drawdownrateList']))],\
-                              index =         ['参数组'  , '累计收益率'                  , '平均盈亏'                             , '胜率'                        , '交易次数'          , '平均盈利/平均亏损'                , '权益最大回撤'                ,'权益最大回撤比'                ,'损益最大回撤'                       ,'损益最大回撤比'])
+                s = pd.Series([setting,        '%02.2f'%float(d1['capital']), '%02.2f'%float(d['totalReturn']),'%02.2f'%float(d1['averagewininglosing']),'%02.2f'%float(d1['winningRate']),d['totalTradeCount'],'%02.2f'%float(d1['profitLossRatio']),'%02.2f'%float(d['maxDrawdown']),'%02.2f'%float(d['maxDdPercent']),'%02.2f'%float(min(d1['drawdownList'])),'%02.2f'%float(min(d1['drawdownrateList'])),'%02.2f'%float(d1['totalWinning']),'%02.2f'%float(d1['totalLosing']),max(d1['winloselist']),abs(min(d1['winloselist'])),'%02.2f'%float(max(d1['pnlList'])),'%02.2f'%float(abs(min(d1['pnlList'])))],\
+                              index =         ['参数组'  , '累计收益'                             ,'累计收益率'                  , '平均盈亏'                             , '胜率'                        , '交易次数'          , '平均盈利/平均亏损'                , '权益最大回撤'                ,'权益最大回撤比'                ,'损益最大回撤'                       ,'损益最大回撤比'                       ,'总盈利'                          ,'总亏损'                          ,'最大持续盈利次数'     ,'最大持续亏损次数'                           ,'最大盈利'                                 ,'最大亏损'   ])
                 resultList_csv.append(s)    
-                
-        Optimization_result_csv = pd.DataFrame(columns = ['参数组', '累计收益率', '平均盈亏', '胜率', '交易次数', '平均盈利/平均亏损', '权益最大回撤','权益最大回撤比','损益最大回撤','损益最大回撤比'])
+        Optimization_result_csv = pd.DataFrame(columns = ['参数组', '累计收益','累计收益率', '平均盈亏', '胜率', '交易次数', '平均盈利/平均亏损', '权益最大回撤','权益最大回撤比','损益最大回撤','损益最大回撤比'])
         for i in range(len(resultList_csv)):
             Optimization_result_csv = Optimization_result_csv.append(resultList_csv[i],ignore_index=True)         
         Optimization_result_csv.to_csv(r'F:\\uiKLine\\data\\Optimization\OptimizationResult.csv',encoding='utf_8_sig',mode='w',index=False)                
@@ -1502,7 +1501,6 @@ class BacktestingEngine(object):
         df['highlevel'] = df['balance'].rolling(min_periods=1,window=len(df),center=False).max()
         df['drawdown'] = df['balance'] - df['highlevel']        
         df['ddPercent'] = df['drawdown'] / df['highlevel'] * 100
-        
         
         
         # 计算统计结果
@@ -2072,17 +2070,27 @@ class BacktestingEngine(object):
         tb1.add_row([u'最终权益',"%(xxx)s"%{'xxx':formatNumber(self.capital+d['capital'])},"",""])
         tb1.add_row(['  ','  ',"",""])
         
-
-        if d_l['totalResult'] >0 and d_s['totalResult']>0:
+        if d_l['totalResult'] >0 and d_s['totalResult']>0 :
             tb1.add_row([u'盈利率',"%(xxx)s%%"%{'xxx':formatNumber(d['profitrate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_l['profitrate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_s['profitrate'])}])
             tb1.add_row([u'总盈利',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_l['totalWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_s['totalWinning'])}])      
             tb1.add_row([u'总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_l['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_s['totalLosing'])}])
             tb1.add_row([u'净利润',"%(xxx)s"%{'xxx':formatNumber(d['capital'])},"%(xxx)s"%{'xxx':formatNumber(d_l['capital'])},"%(xxx)s"%{'xxx':formatNumber(d_s['capital'])}])
-            tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning']/abs(d['totalLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_l['totalWinning']/abs(d_l['totalLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_s['totalWinning']/abs(d_s['totalLosing']))}])
+            if d['totalLosing'] <0 and d_l['totalLosing'] < 0 and d_s['totalLosing'] == 0: 
+                tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning']/abs(d['totalLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_l['totalWinning']/abs(d_l['totalLosing']))},"%(xxx)s"%{'xxx':'---'}])
+            elif d['totalLosing'] <0 and d_l['totalLosing'] == 0 and d_s['totalLosing'] < 0:
+                tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning']/abs(d['totalLosing']))},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['totalWinning']/abs(d_s['totalLosing']))}])
+            else:
+                tb1.add_row([u'总盈利/总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning']/abs(d['totalLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_l['totalWinning']/abs(d_l['totalLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_s['totalWinning']/abs(d_s['totalLosing']))}])           
             tb1.add_row([u'平均盈利',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_l['averageWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning'])}])
             tb1.add_row([u'平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_l['averageLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_s['averageLosing'])}])
-            tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning']/abs(d['averageLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_l['averageWinning']/abs(d_l['averageLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning']/abs(d_s['averageLosing']))}]) 
-        if d_l['totalResult'] ==0:
+            
+            if d['averageLosing'] <0 and d_l['averageLosing'] < 0 and d_s['averageLosing'] == 0: 
+                tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning']/abs(d['averageLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_l['averageWinning']/abs(d_l['averageLosing']))},"%(xxx)s"%{'xxx':'---'}]) 
+            elif d['averageLosing'] <0 and d_l['averageLosing'] == 0 and d_s['averageLosing'] < 0: 
+                tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning']/abs(d['averageLosing']))},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning']/abs(d_s['averageLosing']))}]) 
+            else:
+                tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning']/abs(d['averageLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_l['averageWinning']/abs(d_l['averageLosing']))},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning']/abs(d_s['averageLosing']))}]) 
+        if d_l['totalResult'] ==0 :
             tb1.add_row([u'盈利率',"%(xxx)s%%"%{'xxx':formatNumber(d['profitrate'])},"%(xxx)s"%{'xxx':'---'},"%(xxx)s%%"%{'xxx':formatNumber(d_s['profitrate'])}])
             tb1.add_row([u'总盈利',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning'])},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['totalWinning'])}])        
             tb1.add_row([u'总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalLosing'])},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['totalLosing'])}])
@@ -2091,7 +2099,7 @@ class BacktestingEngine(object):
             tb1.add_row([u'平均盈利',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning'])},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning'])}])
             tb1.add_row([u'平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageLosing'])},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['averageLosing'])}])
             tb1.add_row([u'平均盈利/平均亏损',"%(xxx)s"%{'xxx':formatNumber(d['averageWinning']/abs(d['averageLosing']))},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(d_s['averageWinning']/abs(d_s['averageLosing']))}]) 
-        if d_s['totalResult'] ==0:
+        if d_s['totalResult'] ==0 :
             tb1.add_row([u'盈利率',"%(xxx)s%%"%{'xxx':formatNumber(d['profitrate'])},"%(xxx)s%%"%{'xxx':formatNumber(d_l['profitrate'])},"%(xxx)s"%{'xxx':'---'}])
             tb1.add_row([u'总盈利',"%(xxx)s"%{'xxx':formatNumber(d['totalWinning'])},"%(xxx)s"%{'xxx':formatNumber(d_l['totalWinning'])},"%(xxx)s"%{'xxx':'---'}])             
             tb1.add_row([u'总亏损',"%(xxx)s"%{'xxx':formatNumber(d['totalLosing'])},"%(xxx)s"%{'xxx':formatNumber(d_l['totalLosing'])},"%(xxx)s"%{'xxx':'---'}])
@@ -2128,8 +2136,10 @@ class BacktestingEngine(object):
             tb1.add_row([u'最大亏损',"%(xxx)s"%{'xxx':formatNumber(min(d['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_l['pnlList']))},"%(xxx)s"%{'xxx':formatNumber(min(d_s['pnlList']))}])
             tb1.add_row([u'最大盈利时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(max(d['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['pnlList'].index(max(d_l['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['pnlList'].index(max(d_s['pnlList']))].strftime("%Y-%m-%d")}])
             tb1.add_row([u'最大亏损时间',"%(xxx)s"%{'xxx':d['timeList'][d['pnlList'].index(min(d['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_l['timeList'][d_l['pnlList'].index(min(d_l['pnlList']))].strftime("%Y-%m-%d")},"%(xxx)s"%{'xxx':d_s['timeList'][d_s['pnlList'].index(min(d_s['pnlList']))].strftime("%Y-%m-%d")}])   
-            if d_l['winningResult'] == 0:
+            if d['winningResult'] >0 and d_l['winningResult'] == 0 and d_s['winningResult'] > 0:
                 tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList'])/abs(d['totalWinning']))},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':formatNumber(max(d_s['pnlList'])/abs(d_s['totalWinning']))}]) 
+            elif d['winningResult'] ==0 and d_l['winningResult'] == 0 and d_s['winningResult'] == 0:       
+                tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':'---'},"%(xxx)s"%{'xxx':'---'}]) 
             else:
                 tb1.add_row([u'最大盈利/总盈利',"%(xxx)s"%{'xxx':formatNumber(max(d['pnlList'])/abs(d['totalWinning']))},"%(xxx)s"%{'xxx':formatNumber(max(d_l['pnlList'])/abs(d_l['totalWinning']))},"%(xxx)s"%{'xxx':formatNumber(max(d_s['pnlList'])/abs(d_s['totalWinning']))}])                 
             tb1.add_row([u'最大持续盈利次数',"%(xxx)s"%{'xxx':(max(d['winloselist']))},"%(xxx)s"%{'xxx':(max(d_l['winloselist']))},"%(xxx)s"%{'xxx':(max(d_s['winloselist']))}])                   
@@ -2185,7 +2195,6 @@ class BacktestingEngine(object):
         tb1.add_row([u'权益最大回撤时间',"%(xxx)s"%{'xxx':result['maxDrawdowndate']},"",""])            
         tb1.add_row([u'权益最大回撤比',"%(xxx)s"%{'xxx':formatNumber(result['maxDdPercent'])},"",""])    
         tb1.add_row([u'权益最大回撤比时间',"%(xxx)s"%{'xxx':result['maxDdPercentdate']},"",""])              
-        
         
         tb1.reversesort = True        
         print(tb1)

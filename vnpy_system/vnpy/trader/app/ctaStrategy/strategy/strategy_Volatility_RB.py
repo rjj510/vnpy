@@ -132,7 +132,7 @@ class strategy_Volatility_RB(CtaTemplate):
         # 策略时方便（更多是个编程习惯的选择）
         self.BKWeekProfit                    =[0,0,0,0,0,0,0]
         self.SKWeekProfit                    =[0,0,0,0,0,0,0]
-        self.LongBestday                     =[0,1,2]
+        self.LongBestday                     =[0,1,2,3]#[0,1,2] 20190627
         self.ShortBestday                    =[1,2,3]
     #----------------------------------------------------------------------
     def onInit(self):
@@ -199,7 +199,8 @@ class strategy_Volatility_RB(CtaTemplate):
             self.putEvent()            
             return            
         
-        #if bar.date=='20190509':
+        
+        #if bar.date=='20190708':
         #    print bar.date
             
         if self.tradeday>0:
